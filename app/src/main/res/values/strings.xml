@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">AMAN — أمان</string>
+    <string name="app_tagline">خدمة تجارية لحماية أرقام الهاتف المحمول</string>
+    <string name="login_title">تسجيل الدخول</string>
+    <string name="email_hint">البريد الإلكتروني</string>
+    <string name="password_hint">كلمة المرور</string>
+    <string name="btn_login">دخول</string>
+    <string name="btn_logout">تسجيل الخروج</string>
+    <string name="customer_dashboard">واجهة العميل</string>
+    <string name="admin_dashboard">واجهة الإدارة</string>
+</resources>

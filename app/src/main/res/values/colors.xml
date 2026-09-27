@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="aman_primary">#0A192F</color>
+    <color name="aman_primary_dark">#020C1B</color>
+    <color name="aman_accent">#10B981</color>
+    <color name="aman_amber">#F59E0B</color>
+    <color name="aman_background">#F8FAFC</color>
+    <color name="aman_surface">#FFFFFF</color>
+    <color name="aman_text_primary">#0F172A</color>
+    <color name="aman_text_secondary">#64748B</color>
+</resources>

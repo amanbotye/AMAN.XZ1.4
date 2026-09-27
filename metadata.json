@@ -1,0 +1,6 @@
+{
+  "name": "AMAN.XZ1 — Native Android Protection System",
+  "description": "AMAN.XZ1 Native Android mobile number protection system powered by Supabase and Kotlin Jetpack Compose.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
