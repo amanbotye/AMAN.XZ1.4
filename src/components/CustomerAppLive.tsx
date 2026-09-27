@@ -14,7 +14,14 @@ import {
   Bell,
   RefreshCw,
   Send,
-  Loader2
+  Loader2,
+  User as UserIcon,
+  HelpCircle,
+  KeyRound,
+  FileCheck,
+  ExternalLink,
+  ChevronRight,
+  Info
 } from 'lucide-react';
 import { liveAmanService } from '../services/liveAmanService';
 import { getErrorMessageAr } from '../services/errorTranslator';
@@ -34,9 +41,16 @@ interface CustomerAppLiveProps {
 }
 
 export function CustomerAppLive({ onSignOut, userEmail }: CustomerAppLiveProps) {
-  const [activeTab, setActiveTab] = useState<'home' | 'numbers' | 'requests' | 'protections' | 'notifications'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'numbers' | 'requests' | 'protections' | 'notifications' | 'profile' | 'more'>('home');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Profile Form State
+  const [fullName, setFullName] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [profileMsg, setProfileMsg] = useState<{ text: string; error?: boolean } | null>(null);
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
   // Real Database State
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -103,6 +117,11 @@ export function CustomerAppLive({ onSignOut, userEmail }: CustomerAppLiveProps) 
       setMyNotifications(fetchedNotifications);
       setPaymentMethods(fetchedPaymentMethods);
       setAllPackages(fetchedPackages);
+
+      const userProf = await liveAmanService.getCurrentUserProfile();
+      if (userProf?.full_name) {
+        setFullName(userProf.full_name);
+      }
     } catch (e) {
       console.error('Failed to load data:', e);
     } finally {
@@ -304,6 +323,22 @@ export function CustomerAppLive({ onSignOut, userEmail }: CustomerAppLiveProps) 
             }`}
           >
             الإشعارات ({myNotifications.filter(n => !n.is_read).length})
+          </button>
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`px-4 py-2.5 text-xs font-bold border-b-2 whitespace-nowrap transition-all ${
+              activeTab === 'profile' ? 'border-cyan-500 text-cyan-400' : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            حسابي
+          </button>
+          <button
+            onClick={() => setActiveTab('more')}
+            className={`px-4 py-2.5 text-xs font-bold border-b-2 whitespace-nowrap transition-all ${
+              activeTab === 'more' ? 'border-cyan-500 text-cyan-400' : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            المزيد
           </button>
         </div>
       </header>
@@ -709,6 +744,219 @@ export function CustomerAppLive({ onSignOut, userEmail }: CustomerAppLiveProps) 
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* TAB 6: PROFILE (1.5.7 حسابي) */}
+        {activeTab === 'profile' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-base font-bold text-white">إعدادات الحساب والملف الشخصي</h2>
+              <p className="text-xs text-slate-400">إدارة بيانات حسابك وتأمين كلمة المرور</p>
+            </div>
+
+            {profileMsg && (
+              <div className={`p-4 rounded-2xl text-xs font-semibold ${
+                profileMsg.error ? 'bg-rose-950/40 border border-rose-500/30 text-rose-300' : 'bg-emerald-950/40 border border-emerald-500/30 text-emerald-300'
+              }`}>
+                {profileMsg.text}
+              </div>
+            )}
+
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-6">
+              <div className="flex items-center gap-4 pb-4 border-b border-slate-800">
+                <div className="w-12 h-12 rounded-2xl bg-cyan-600/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center font-bold text-lg">
+                  {fullName ? fullName.charAt(0) : userEmail.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div className="font-bold text-white text-sm">{fullName || 'عميل منظومة أمان'}</div>
+                  <div className="text-xs text-slate-400 font-mono" dir="ltr">{userEmail}</div>
+                </div>
+              </div>
+
+              {/* Edit Name Form */}
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setIsUpdatingProfile(true);
+                  setProfileMsg(null);
+                  const ok = await liveAmanService.updateUserProfile(fullName.trim());
+                  setIsUpdatingProfile(false);
+                  if (ok) {
+                    setProfileMsg({ text: 'تم تحديث الاسم بنجاح في قاعدة البيانات.' });
+                  } else {
+                    setProfileMsg({ text: 'تعذر تحديث الاسم، يرجى المحاولة لاحقاً.', error: true });
+                  }
+                }}
+                className="space-y-4"
+              >
+                <h4 className="text-xs font-bold text-slate-300 flex items-center gap-2">
+                  <UserIcon className="w-4 h-4 text-cyan-400" />
+                  البيانات الشخصية
+                </h4>
+
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">الاسم الكامل:</label>
+                  <input
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={e => setFullName(e.target.value)}
+                    placeholder="أدخل اسمك الكريم"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isUpdatingProfile}
+                  className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+                >
+                  {isUpdatingProfile ? 'جاري الحفظ...' : 'حفظ تعديل الاسم'}
+                </button>
+              </form>
+
+              <hr className="border-slate-800" />
+
+              {/* Change Password Form */}
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (newPassword.length < 6) {
+                    setProfileMsg({ text: 'كلمة المرور يجب أن لا تقل عن 6 أحرف.', error: true });
+                    return;
+                  }
+                  if (newPassword !== confirmPassword) {
+                    setProfileMsg({ text: 'كلمتا المرور غير متطابقتين.', error: true });
+                    return;
+                  }
+
+                  setIsUpdatingProfile(true);
+                  setProfileMsg(null);
+                  const res = await liveAmanService.updateUserPassword(newPassword);
+                  setIsUpdatingProfile(false);
+                  if (res.success) {
+                    setProfileMsg({ text: 'تم تغيير كلمة المرور بنجاح.' });
+                    setNewPassword('');
+                    setConfirmPassword('');
+                  } else {
+                    setProfileMsg({ text: res.error || 'تعذر تغيير كلمة المرور.', error: true });
+                  }
+                }}
+                className="space-y-4"
+              >
+                <h4 className="text-xs font-bold text-slate-300 flex items-center gap-2">
+                  <KeyRound className="w-4 h-4 text-amber-400" />
+                  تغيير كلمة المرور
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">كلمة المرور الجديدة:</label>
+                    <input
+                      type="password"
+                      required
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">تأكيد كلمة المرور:</label>
+                    <input
+                      type="password"
+                      required
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isUpdatingProfile}
+                  className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+                >
+                  تحديث كلمة المرور
+                </button>
+              </form>
+
+              <hr className="border-slate-800" />
+
+              <div className="pt-2 flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-bold text-rose-400">تسجيل الخروج</div>
+                  <div className="text-[11px] text-slate-500">إنهاء الجلسة الحالية والعودة لشاشة الدخول</div>
+                </div>
+                <button
+                  onClick={onSignOut}
+                  className="px-4 py-2 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5"
+                >
+                  <LogOut className="w-4 h-4" />
+                  تسجيل الخروج
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 7: MORE (1.5.8 المزيد) */}
+        {activeTab === 'more' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-base font-bold text-white">المزيد والمعلومات</h2>
+              <p className="text-xs text-slate-400">دليل المنظومة، الشروط والأحكام، والدعم الفني</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-3">
+                <div className="w-10 h-10 rounded-2xl bg-cyan-600/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-white text-sm">عن منظومة أمان (AMAN)</h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  منظومة تقنية متخصصة تضمن استمرارية وحماية أرقام الهواتف المحمولة في الجمهورية اليمنية (يمن موبايل، يو YOU، سبأفون، واي) ضد السحب والإلغاء وتدوير الخطوط بسبب عدم الاستخدام أو انتهاء الصلاحية.
+                </p>
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center">
+                  <HelpCircle className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-white text-sm">مركز المساعدة والدعم</h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  لأي استفسارات أو متابعة الحوالات والطلبات، يمكنك التواصل مع فريق الدعم الفني المباشر عبر الأرقام ووسائل الدفع المعتمدة لدى المنظومة.
+                </p>
+              </div>
+            </div>
+
+            {/* Legal and Terms Accordion */}
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl divide-y divide-slate-800 overflow-hidden">
+              <div className="p-5 space-y-2">
+                <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                  <FileCheck className="w-4 h-4 text-cyan-400" />
+                  الشروط والأحكام العامة
+                </h4>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  1. تسجيل الرقم لا يمنحه حماية إلا بعد سداد الرسوم واعتماد الإدارة للطلب.<br />
+                  2. تبدأ مدة الحماية من تاريخ موافقة واعتماد المدير وليس من تاريخ السداد أو الإيداع.<br />
+                  3. التجديد متاح قبل انتهاء الحماية بـ 10 أيام لضمان عدم انقطاع دورة المهام التشغيلية.
+                </p>
+              </div>
+
+              <div className="p-5 space-y-2">
+                <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  سياسة الخصوصية وأمن البيانات
+                </h4>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  نحن نلتزم بحماية بياناتك وسجلات أرقامك. يتم تشفير كافة الاتصالات مع قاعدة البيانات عبر طبقات حماية Supabase RLS ولا يتم مشاركة أي بيانات اتصال مع أي طرف ثالث خارج إطار العمليات التشغيلية.
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </main>

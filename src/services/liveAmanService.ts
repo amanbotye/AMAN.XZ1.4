@@ -372,6 +372,210 @@ class LiveAmanService {
     return data as RpcResult;
   }
 
+  // 13. Customers Management (Admin)
+  async getCustomers(): Promise<User[]> {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error || !data) return [];
+    return data as User[];
+  }
+
+  async updateCustomerStatus(userId: string, status: 'active' | 'suspended' | 'disabled'): Promise<boolean> {
+    const { error } = await supabase
+      .from('users')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', userId);
+    return !error;
+  }
+
+  // 14. Companies Management (Admin)
+  async getAllCompaniesAdmin(): Promise<Company[]> {
+    const { data, error } = await supabase
+      .from('companies')
+      .select('*')
+      .order('display_order', { ascending: true });
+
+    if (error || !data) return [];
+    return data as Company[];
+  }
+
+  async saveCompany(company: Partial<Company>): Promise<boolean> {
+    if (company.id) {
+      const { error } = await supabase
+        .from('companies')
+        .update({
+          name_ar: company.name_ar,
+          name_en: company.name_en,
+          code: company.code,
+          description: company.description,
+          display_order: company.display_order,
+          is_active: company.is_active,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', company.id);
+      return !error;
+    } else {
+      const { error } = await supabase
+        .from('companies')
+        .insert({
+          name_ar: company.name_ar,
+          name_en: company.name_en || '',
+          code: company.code || '',
+          description: company.description || '',
+          display_order: company.display_order || 0,
+          is_active: company.is_active ?? true
+        });
+      return !error;
+    }
+  }
+
+  // 15. Packages Management (Admin)
+  async getAllPackagesAdmin(): Promise<CompanyPackage[]> {
+    const { data, error } = await supabase
+      .from('company_packages')
+      .select('*')
+      .order('price', { ascending: true });
+
+    if (error || !data) return [];
+    return data as CompanyPackage[];
+  }
+
+  async savePackage(pkg: Partial<CompanyPackage>): Promise<boolean> {
+    if (pkg.id) {
+      const { error } = await supabase
+        .from('company_packages')
+        .update({
+          name_ar: pkg.name_ar,
+          name_en: pkg.name_en,
+          price: pkg.price,
+          currency: pkg.currency,
+          duration_days: pkg.duration_days,
+          is_active: pkg.is_active,
+          is_visible: pkg.is_visible,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', pkg.id);
+      return !error;
+    } else {
+      const { error } = await supabase
+        .from('company_packages')
+        .insert({
+          company_id: pkg.company_id,
+          name_ar: pkg.name_ar,
+          name_en: pkg.name_en || '',
+          description: pkg.description || '',
+          price: pkg.price || 0,
+          currency: pkg.currency || 'YER',
+          duration_days: pkg.duration_days || 30,
+          is_active: pkg.is_active ?? true,
+          is_visible: pkg.is_visible ?? true
+        });
+      return !error;
+    }
+  }
+
+  // 16. Payment Methods Management (Admin)
+  async getAllPaymentMethodsAdmin(): Promise<PaymentMethod[]> {
+    const { data, error } = await supabase
+      .from('payment_methods')
+      .select('*')
+      .order('display_order', { ascending: true });
+
+    if (error || !data) return [];
+    return data as PaymentMethod[];
+  }
+
+  async savePaymentMethod(pm: Partial<PaymentMethod>): Promise<boolean> {
+    if (pm.id) {
+      const { error } = await supabase
+        .from('payment_methods')
+        .update({
+          name_ar: pm.name_ar,
+          name_en: pm.name_en,
+          account_name: pm.account_name,
+          account_identifier: pm.account_identifier,
+          instructions: pm.instructions,
+          display_order: pm.display_order,
+          is_active: pm.is_active,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', pm.id);
+      return !error;
+    } else {
+      const { error } = await supabase
+        .from('payment_methods')
+        .insert({
+          name_ar: pm.name_ar,
+          name_en: pm.name_en || '',
+          code: pm.code || 'custom',
+          account_name: pm.account_name || '',
+          account_identifier: pm.account_identifier || '',
+          instructions: pm.instructions || '',
+          display_order: pm.display_order || 0,
+          is_active: pm.is_active ?? true
+        });
+      return !error;
+    }
+  }
+
+  // 17. Audit Logs (Admin)
+  async getAuditLogs(): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error || !data) return [];
+    return data;
+  }
+
+  // 18. System Settings (Admin)
+  async getSystemSettings(): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('*')
+      .order('setting_key', { ascending: true });
+
+    if (error || !data) return [];
+    return data;
+  }
+
+  async updateSystemSetting(key: string, value: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('system_settings')
+      .update({ setting_value: value, updated_at: new Date().toISOString() })
+      .eq('setting_key', key);
+    return !error;
+  }
+
+  // 19. User Profile Update (Customer Profile)
+  async updateUserProfile(fullName: string): Promise<boolean> {
+    const session = await this.getSession();
+    if (!session?.user) return false;
+
+    const { error } = await supabase
+      .from('users')
+      .update({ full_name: fullName, updated_at: new Date().toISOString() })
+      .eq('id', session.user.id);
+
+    return !error;
+  }
+
+  async updateUserPassword(newPassword: string): Promise<{ success: boolean; error?: string }> {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  }
+
   // Check if current user is admin
   async rpcIsAdmin(): Promise<boolean> {
     try {

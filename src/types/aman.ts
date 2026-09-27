@@ -258,6 +258,50 @@ export interface AuditLog {
   created_at: string;
 }
 
+export interface SystemSetting {
+  id: string;
+  setting_key: string;
+  setting_value: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CompanyTaskSettings {
+  id: string;
+  company_id: string;
+  task_amount: number;
+  task_currency: string;
+  task_interval_days: number;
+  enable_first_task: boolean;
+  enable_recurring_tasks: boolean;
+  due_visibility_days: number;
+  completed_retention_days: number;
+  overdue_retention_days: number;
+  scheduled_retention_days: number;
+  allow_reschedule: boolean;
+  allow_after_expiry: boolean;
+  max_days_after_expiry: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CompanySubscriptionSettings {
+  id: string;
+  company_id: string;
+  renewal_enabled: boolean;
+  renewal_visibility_days: number;
+  expiry_notifications_enabled: boolean;
+  notify_days_before_expiry: number;
+  allow_task_after_expiry: boolean;
+  max_task_days_after_expiry: number;
+  expiry_extension_rules: any;
+  created_at: string;
+  updated_at: string;
+}
+
 // Standard RPC Result Shape
 export interface RpcResult<T = any> {
   success: boolean;
