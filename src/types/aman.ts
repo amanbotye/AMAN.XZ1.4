@@ -27,6 +27,9 @@ export interface UserProfile {
   updated_at: string;
 }
 
+export type User = UserProfile;
+export type Company = TelecomCompany;
+
 export interface TelecomCompany {
   id: string;
   name_ar: string;
