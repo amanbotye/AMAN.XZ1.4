@@ -1,0 +1,6 @@
+{
+  "name": "AMAN — أمان لحماية أرقام الهاتف المحمول",
+  "description": "منصة AMAN لإدارة وحماية أرقام الهاتف المحمول وفق المواصفة المرجعية AMAN.XZ1.4 وقاعدة بيانات Supabase الموثوقة.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
