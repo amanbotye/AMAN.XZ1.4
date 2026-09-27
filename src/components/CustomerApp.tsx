@@ -13,7 +13,8 @@ import {
   Bell,
   Check,
   CreditCard,
-  FileText
+  FileText,
+  RotateCcw
 } from 'lucide-react';
 import { amanStore } from '../services/amanStore.ts';
 import { getErrorMessageAr } from '../services/errorTranslator.ts';
@@ -39,6 +40,16 @@ export function CustomerApp() {
   const [requestError, setRequestError] = useState<{ message: string; action: string } | null>(null);
   const [requestSuccess, setRequestSuccess] = useState<boolean>(false);
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+
+  // Renewal Modal State
+  const [showRenewalModal, setShowRenewalModal] = useState(false);
+  const [targetRenewalProtId, setTargetRenewalProtId] = useState<string>('');
+  const [renewalPackageId, setRenewalPackageId] = useState<string>('');
+  const [renewalPaymentMethodId, setRenewalPaymentMethodId] = useState<string>('');
+  const [renewalTransferRef, setRenewalTransferRef] = useState<string>('');
+  const [renewalError, setRenewalError] = useState<{ message: string; action: string } | null>(null);
+  const [renewalSuccess, setRenewalSuccess] = useState(false);
+  const [isSubmittingRenewal, setIsSubmittingRenewal] = useState(false);
 
   // Re-fetch store data on update
   const myNumbers = amanStore.customerNumbers.filter(
@@ -119,6 +130,47 @@ export function CustomerApp() {
     } else {
       const err = getErrorMessageAr(res.error_code, res.message);
       setRequestError(err);
+    }
+  };
+
+  const handleCreateRenewal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRenewalError(null);
+    setRenewalSuccess(false);
+
+    if (!targetRenewalProtId) {
+      setRenewalError({ message: 'معرف الحماية غير صالح.', action: 'يرجى اختيار الحماية المطلوب تجديدها مجدداً.' });
+      return;
+    }
+    if (!renewalPackageId) {
+      setRenewalError({ message: 'يرجى اختيار باقة التجديد.', action: 'حدد باقة التجديد المناسبة.' });
+      return;
+    }
+    if (!renewalPaymentMethodId) {
+      setRenewalError({ message: 'يرجى تحديد وسيلة التحويل.', action: 'اختر طريقة الدفع المناسبة.' });
+      return;
+    }
+    if (!renewalTransferRef.trim()) {
+      setRenewalError({ message: 'رقم مرجع الحوالة إلزامي.', action: 'يرجى كتابة رقم الحوالة أو رقم العملية المرجعي.' });
+      return;
+    }
+
+    setIsSubmittingRenewal(true);
+    const res = await amanStore.rpcCreateRenewalRequest(
+      targetRenewalProtId,
+      renewalPackageId,
+      renewalPaymentMethodId,
+      renewalTransferRef
+    );
+    setIsSubmittingRenewal(false);
+
+    if (res.success) {
+      setRenewalSuccess(true);
+      setRenewalTransferRef('');
+      setRefreshKey(prev => prev + 1);
+    } else {
+      const err = getErrorMessageAr(res.error_code, res.message);
+      setRenewalError(err);
     }
   };
 
@@ -729,8 +781,23 @@ export function CustomerApp() {
                     </div>
                   </div>
 
-                  <div className="text-[11px] text-slate-400">
-                    الباقة المعتمدة: <strong className="text-slate-200">{prot.package_name_snapshot}</strong> ({prot.price_snapshot} {prot.currency_snapshot})
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-800/80">
+                    <div>
+                      الباقة: <strong className="text-slate-200">{prot.package_name_snapshot}</strong> ({prot.price_snapshot} {prot.currency_snapshot})
+                    </div>
+                    <button
+                      onClick={() => {
+                        setTargetRenewalProtId(prot.id);
+                        setRenewalPackageId(prot.package_id);
+                        setShowRenewalModal(true);
+                        setRenewalError(null);
+                        setRenewalSuccess(false);
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      طلب تجديد الحماية
+                    </button>
                   </div>
                 </div>
               );
@@ -855,6 +922,142 @@ export function CustomerApp() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: RENEWAL REQUEST */}
+      {showRenewalModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                <RotateCcw className="w-4 h-4 text-emerald-400" />
+                طلب تجديد الحماية
+              </h4>
+              <button
+                onClick={() => setShowRenewalModal(false)}
+                className="text-slate-400 hover:text-white text-xs"
+              >
+                إغلاق
+              </button>
+            </div>
+
+            {renewalSuccess ? (
+              <div className="p-4 bg-emerald-950/30 border border-emerald-500/30 rounded-xl text-center space-y-2 text-xs">
+                <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 mx-auto flex items-center justify-center">
+                  <Check className="w-5 h-5" />
+                </div>
+                <div className="font-bold text-white text-sm">تم إرسال طلب التجديد بنجاح!</div>
+                <p className="text-slate-300">
+                  تم إدراج طلب التجديد بانتظار تدقيق الحوالة من قبل الإدارة وتمديد صلاحية الحماية فوراً.
+                </p>
+                <button
+                  onClick={() => setShowRenewalModal(false)}
+                  className="mt-2 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold"
+                >
+                  حسناً
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleCreateRenewal} className="space-y-4">
+                {renewalError && (
+                  <div className="p-3 bg-rose-950/40 border border-rose-500/30 rounded-xl text-xs text-rose-300 space-y-0.5">
+                    <div className="font-bold">{renewalError.message}</div>
+                    <div className="text-[11px] text-rose-400/90">{renewalError.action}</div>
+                  </div>
+                )}
+
+                {(() => {
+                  const targetProt = amanStore.protections.find(p => p.id === targetRenewalProtId);
+                  const targetNum = targetProt ? amanStore.customerNumbers.find(n => n.id === targetProt.customer_number_id) : null;
+                  const targetCompany = targetProt ? getCompany(targetProt.company_id) : null;
+                  const companyPkgs = targetProt ? amanStore.packages.filter(p => p.company_id === targetProt.company_id && p.is_active) : [];
+
+                  return (
+                    <>
+                      <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs flex items-center justify-between">
+                        <div>
+                          <span className="text-slate-400 block text-[11px]">الرقم المراد تجديده:</span>
+                          <span className="font-mono font-bold text-white text-sm" dir="ltr">{targetNum?.phone_number}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-slate-400 block text-[11px]">الشركة:</span>
+                          <span className="text-cyan-400 font-semibold">{targetCompany?.name_ar}</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-slate-300 block mb-1">
+                          اختر مدة / باقة التجديد:
+                        </label>
+                        <select
+                          value={renewalPackageId}
+                          onChange={e => setRenewalPackageId(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                        >
+                          {companyPkgs.map(pkg => (
+                            <option key={pkg.id} value={pkg.id}>
+                              {pkg.name_ar} — {pkg.price} {pkg.currency} ({pkg.duration_days} يوماً)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-slate-300 block mb-1">
+                          وسيلة الدفع / التحويل:
+                        </label>
+                        <select
+                          value={renewalPaymentMethodId}
+                          onChange={e => setRenewalPaymentMethodId(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                          required
+                        >
+                          <option value="">-- اختر طريقة الدفع --</option>
+                          {amanStore.paymentMethods.filter(m => m.is_active).map(pm => (
+                            <option key={pm.id} value={pm.id}>
+                              {pm.name_ar} ({pm.account_identifier})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-slate-300 block mb-1">
+                          رقم مرجع الحوالة (إلزامي للتدقيق):
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={renewalTransferRef}
+                          onChange={e => setRenewalTransferRef(e.target.value)}
+                          placeholder="مثال: TRX-771199 أو رقم إشعار التحويل"
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white font-mono placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+                    </>
+                  );
+                })()}
+
+                <div className="pt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowRenewalModal(false)}
+                    className="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg text-xs"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingRenewal}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold"
+                  >
+                    {isSubmittingRenewal ? 'جاري إرسال التجديد...' : 'تأكيد طلب التجديد'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

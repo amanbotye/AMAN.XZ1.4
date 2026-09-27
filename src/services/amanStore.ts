@@ -610,6 +610,161 @@ class AmanDataStore {
     return { success: true };
   }
 
+  // RPC: rpc_approve_renewal
+  async rpcApproveRenewal(renewalId: string): Promise<RpcResult> {
+    if (isLiveSupabaseConfigured()) {
+      const { data, error } = await supabase.rpc('rpc_approve_renewal', { p_renewal_id: renewalId });
+      if (error) return { success: false, error_code: error.message };
+      return data;
+    }
+
+    if (!this.currentUser) return { success: false, error_code: 'UNAUTHORIZED' };
+    if (this.currentUser.user_type !== 'admin') return { success: false, error_code: 'FORBIDDEN' };
+
+    const renewal = this.renewals.find(r => r.id === renewalId);
+    if (!renewal) return { success: false, error_code: 'NOT_FOUND' };
+    if (renewal.status !== 'pending') return { success: false, error_code: 'INVALID_STATE' };
+
+    // Mandatory payment check for renewal
+    const verifiedLog = this.paymentLogs.find(
+      l => l.renewal_id === renewalId && l.verification_status === 'verified'
+    );
+    if (!verifiedLog) {
+      return {
+        success: false,
+        error_code: 'PAYMENT_NOT_VERIFIED',
+        message: 'يجب تأكيد التحويل المالي للتجديد من قبل الإدارة أولاً قبل قبول الطلب.'
+      };
+    }
+
+    const prot = this.protections.find(p => p.id === renewal.protection_id);
+    if (!prot) return { success: false, error_code: 'NOT_FOUND' };
+
+    // Calculate new end date
+    const prevEnd = new Date(prot.end_at);
+    const newEnd = new Date(prevEnd.getTime() + renewal.duration_days_snapshot * 86400000);
+
+    prot.end_at = newEnd.toISOString();
+    prot.renewal_count += 1;
+    prot.updated_at = new Date().toISOString();
+
+    renewal.status = 'approved';
+    renewal.new_end_at = newEnd.toISOString();
+    renewal.reviewed_by = this.currentUser.id;
+    renewal.reviewed_at = new Date().toISOString();
+    renewal.updated_at = new Date().toISOString();
+
+    // Schedule next task for extended period
+    const nextTaskDate = new Date(prevEnd.getTime() + 25 * 86400000);
+    this.tasks.unshift({
+      id: `task-${Date.now()}-ren`,
+      protection_id: prot.id,
+      customer_id: prot.customer_id,
+      customer_number_id: prot.customer_number_id,
+      company_id: prot.company_id,
+      task_number: this.tasks.filter(t => t.protection_id === prot.id).length + 1,
+      task_type: 'operational',
+      amount: 500,
+      currency: 'YER',
+      scheduled_at: nextTaskDate.toISOString(),
+      due_at: new Date(nextTaskDate.getTime() + 25 * 86400000).toISOString(),
+      status: 'scheduled',
+      completed_at: null,
+      completed_by: null,
+      execution_note: null,
+      source_task_interval_days: 25,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+
+    // Notify customer
+    this.clientNotifications.unshift({
+      id: `cnotif-${Date.now()}`,
+      user_id: prot.customer_id,
+      notification_type: 'renewal_approved',
+      title: 'تم قبول طلب تجديد الحماية بنجاح',
+      body: `تم تمديد حماية رقمك بنجاح حتى تاريخ ${newEnd.toLocaleDateString('ar-YE')}.`,
+      related_request_id: null,
+      related_protection_id: prot.id,
+      related_task_id: null,
+      is_read: false,
+      read_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+
+    return { success: true, new_end_at: newEnd.toISOString() };
+  }
+
+  // RPC: rpc_reject_renewal
+  async rpcRejectRenewal(renewalId: string, reason: string): Promise<RpcResult> {
+    if (isLiveSupabaseConfigured()) {
+      const { data, error } = await supabase.rpc('rpc_reject_renewal', {
+        p_renewal_id: renewalId,
+        p_rejection_reason: reason
+      });
+      if (error) return { success: false, error_code: error.message };
+      return data;
+    }
+
+    if (!this.currentUser) return { success: false, error_code: 'UNAUTHORIZED' };
+    if (this.currentUser.user_type !== 'admin') return { success: false, error_code: 'FORBIDDEN' };
+    if (!reason || reason.trim().length === 0) return { success: false, error_code: 'VALIDATION_ERROR' };
+
+    const renewal = this.renewals.find(r => r.id === renewalId);
+    if (!renewal) return { success: false, error_code: 'NOT_FOUND' };
+    if (renewal.status !== 'pending') return { success: false, error_code: 'INVALID_STATE' };
+
+    renewal.status = 'rejected';
+    renewal.rejection_reason = reason.trim();
+    renewal.reviewed_by = this.currentUser.id;
+    renewal.reviewed_at = new Date().toISOString();
+    renewal.updated_at = new Date().toISOString();
+
+    this.clientNotifications.unshift({
+      id: `cnotif-${Date.now()}`,
+      user_id: renewal.customer_id,
+      notification_type: 'renewal_rejected',
+      title: 'تم رفض طلب التجديد',
+      body: `تم رفض طلب تجديد الحماية. سبب الرفض: ${reason.trim()}`,
+      related_request_id: null,
+      related_protection_id: renewal.protection_id,
+      related_task_id: null,
+      is_read: false,
+      read_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+
+    return { success: true };
+  }
+
+  // RPC: rpc_reschedule_task
+  async rpcRescheduleTask(taskId: string, newScheduledAt: string, reason: string): Promise<RpcResult> {
+    if (isLiveSupabaseConfigured()) {
+      const { data, error } = await supabase.rpc('rpc_reschedule_task', {
+        p_task_id: taskId,
+        p_new_scheduled_at: newScheduledAt,
+        p_reason: reason
+      });
+      if (error) return { success: false, error_code: error.message };
+      return data;
+    }
+
+    if (!this.currentUser) return { success: false, error_code: 'UNAUTHORIZED' };
+    if (this.currentUser.user_type !== 'admin') return { success: false, error_code: 'FORBIDDEN' };
+
+    const task = this.tasks.find(t => t.id === taskId);
+    if (!task) return { success: false, error_code: 'NOT_FOUND' };
+    if (task.status === 'completed') return { success: false, error_code: 'TASK_ALREADY_COMPLETED' };
+
+    task.scheduled_at = newScheduledAt;
+    task.execution_note = `تمت إعادة الجدولة: ${reason}`;
+    task.updated_at = new Date().toISOString();
+
+    return { success: true };
+  }
+
   // RPC: rpc_mark_notification_read
   async rpcMarkNotificationRead(notificationId: string): Promise<RpcResult> {
     const notif = this.clientNotifications.find(n => n.id === notificationId && n.user_id === this.currentUser.id);

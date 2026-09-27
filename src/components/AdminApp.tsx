@@ -21,7 +21,7 @@ import { getErrorMessageAr } from '../services/errorTranslator.ts';
 import { ProtectionRequest, ProtectionTask, ManualPaymentLog } from '../types/aman.ts';
 
 export function AdminApp() {
-  const [activeTab, setActiveTab] = useState<'requests' | 'payments' | 'tasks' | 'companies' | 'audit'>('requests');
+  const [activeTab, setActiveTab] = useState<'requests' | 'payments' | 'tasks' | 'companies' | 'audit' | 'simulator'>('requests');
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Verification modal state
@@ -45,17 +45,51 @@ export function AdminApp() {
   const paymentLogs = amanStore.paymentLogs;
   const auditLogs = amanStore.auditLogs;
 
-  const handleVerifyPayment = async (requestId: string, status: 'verified' | 'rejected') => {
+  const handleVerifyPayment = async (requestId?: string, renewalId?: string, status: 'verified' | 'rejected' = 'verified') => {
     setActionError(null);
     setActionSuccess(null);
     setIsProcessing(true);
 
-    const res = await amanStore.rpcVerifyManualPayment(requestId, undefined, status, verificationNote);
+    const res = await amanStore.rpcVerifyManualPayment(requestId, renewalId, status, verificationNote);
     setIsProcessing(false);
 
     if (res.success) {
       setActionSuccess(status === 'verified' ? 'تم تأكيد صحة الحوالة المالية بنجاح.' : 'تم تسجيل رفض الحوالة المالية.');
       setVerificationNote('');
+      setRefreshKey(prev => prev + 1);
+    } else {
+      const err = getErrorMessageAr(res.error_code, res.message);
+      setActionError(err);
+    }
+  };
+
+  const handleApproveRenewal = async (renewalId: string) => {
+    setActionError(null);
+    setActionSuccess(null);
+    setIsProcessing(true);
+
+    const res = await amanStore.rpcApproveRenewal(renewalId);
+    setIsProcessing(false);
+
+    if (res.success) {
+      setActionSuccess('تمت الموافقة على طلب التجديد وتمديد تاريخ انتهاء الحماية بنجاح!');
+      setRefreshKey(prev => prev + 1);
+    } else {
+      const err = getErrorMessageAr(res.error_code, res.message);
+      setActionError(err);
+    }
+  };
+
+  const handleRejectRenewal = async (renewalId: string, reason: string) => {
+    setActionError(null);
+    setActionSuccess(null);
+    setIsProcessing(true);
+
+    const res = await amanStore.rpcRejectRenewal(renewalId, reason);
+    setIsProcessing(false);
+
+    if (res.success) {
+      setActionSuccess('تم رفض طلب التجديد بنجاح.');
       setRefreshKey(prev => prev + 1);
     } else {
       const err = getErrorMessageAr(res.error_code, res.message);
@@ -185,6 +219,17 @@ export function AdminApp() {
           >
             <FileText className="w-3.5 h-3.5" />
             سجل التدقيق ({auditLogs.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('simulator')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+              activeTab === 'simulator'
+                ? 'bg-rose-600 text-white shadow'
+                : 'bg-slate-800 text-rose-300 hover:bg-slate-700'
+            }`}
+          >
+            <ShieldAlert className="w-3.5 h-3.5" />
+            فاحص سيناريوهات الأمان
           </button>
         </div>
       </div>
@@ -368,6 +413,130 @@ export function AdminApp() {
               })}
             </div>
           )}
+
+          {/* Pending Renewals Section */}
+          {amanStore.renewals.filter(r => r.status === 'pending').length > 0 && (
+            <div className="space-y-4 pt-6 border-t border-slate-800">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <RotateCcw className="w-4 h-4 text-emerald-400" />
+                طلبات تجديد الحماية بانتظار التدقيق والاعتماد
+              </h3>
+
+              <div className="grid grid-cols-1 gap-4">
+                {amanStore.renewals.filter(r => r.status === 'pending').map(ren => {
+                  const prot = amanStore.protections.find(p => p.id === ren.protection_id);
+                  const num = prot ? amanStore.customerNumbers.find(n => n.id === prot.customer_number_id) : null;
+                  const company = prot ? amanStore.companies.find(c => c.id === prot.company_id) : null;
+                  const pm = amanStore.paymentMethods.find(m => m.id === ren.payment_method_id);
+                  const verifiedLog = paymentLogs.find(
+                    l => l.renewal_id === ren.id && l.verification_status === 'verified'
+                  );
+
+                  return (
+                    <div
+                      key={ren.id}
+                      className={`bg-slate-900/70 border rounded-2xl p-5 space-y-4 ${
+                        verifiedLog ? 'border-emerald-500/40 bg-emerald-950/10' : 'border-slate-800'
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xl font-extrabold text-white tracking-widest" dir="ltr">
+                              {num?.phone_number}
+                            </span>
+                            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                              {company?.name_ar}
+                            </span>
+                            <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                              طلب تجديد حماية
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-400 mt-1">
+                            تاريخ الانتهاء الحالي: {new Date(ren.previous_end_at).toLocaleDateString('ar-YE')}
+                          </div>
+                        </div>
+
+                        <div className="text-left">
+                          <div className="text-sm font-bold font-mono text-emerald-400">
+                            {ren.price_snapshot} {ren.currency_snapshot}
+                          </div>
+                          <div className="text-[11px] text-slate-400">تمديد لمدة: {ren.duration_days_snapshot} يوماً</div>
+                        </div>
+                      </div>
+
+                      {/* Payment Verification Box */}
+                      <div className="bg-slate-950 p-4 rounded-xl border border-slate-800/80 space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-xs text-slate-300 flex items-center gap-2">
+                            <CreditCard className="w-4 h-4 text-indigo-400" />
+                            <span>طريقة الدفع: <strong>{pm?.name_ar}</strong></span>
+                          </div>
+                          <div className="text-xs font-mono bg-slate-900 px-3 py-1 rounded text-cyan-300 border border-slate-800">
+                            مرجع الحوالة: <strong>{ren.payment_transfer_reference}</strong>
+                          </div>
+                        </div>
+
+                        <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-900">
+                          <div className="text-xs flex items-center gap-2">
+                            <span className="text-slate-400">حالة التدقيق المالي:</span>
+                            {verifiedLog ? (
+                              <span className="inline-flex items-center gap-1 font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
+                                <Check className="w-3.5 h-3.5" />
+                                تم تأكيد حوالة التجديد
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                                بانتظار تأكيد الحوالة
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {!verifiedLog && (
+                              <button
+                                onClick={() => handleVerifyPayment(undefined, ren.id, 'verified')}
+                                disabled={isProcessing}
+                                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                تأكيد استلام الحوالة
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Renewal Decision Bar */}
+                      <div className="flex items-center justify-end gap-3 pt-2">
+                        <button
+                          onClick={() => handleRejectRenewal(ren.id, 'حوالة غير صحيحة أو ملغاة')}
+                          disabled={isProcessing}
+                          className="px-4 py-2 bg-slate-800 hover:bg-rose-950/40 text-rose-300 border border-slate-700 hover:border-rose-500/30 rounded-xl text-xs font-semibold"
+                        >
+                          رفض التجديد
+                        </button>
+
+                        <button
+                          onClick={() => handleApproveRenewal(ren.id)}
+                          disabled={isProcessing || !verifiedLog}
+                          className={`px-5 py-2 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 ${
+                            verifiedLog
+                              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white shadow-emerald-500/20'
+                              : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                          }`}
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          الموافقة وتمديد صلاحية الحماية
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -543,6 +712,96 @@ export function AdminApp() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: SECURITY & EDGE-CASES SIMULATOR */}
+      {activeTab === 'simulator' && (
+        <div className="space-y-6">
+          <div className="p-5 bg-rose-950/20 border border-rose-500/30 rounded-2xl space-y-2">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-rose-400" />
+              محاكي سيناريوهات الأمان ومحاولات التحايل (Security & Edge Cases)
+            </h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              يقوم هذا الفاحص بتشغيل سيناريوهات استثنائية لاختبار صلابة قواعد الحماية RLS ومنطق دوال الـ RPC الموثوقة للتأكد من حظر أي محاولات لتكرار الحماية أو تجاوز التدقيق المالي.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Scenario 1: Duplicate active protection */}
+            <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs text-white">1. محاولة طلب حماية مكرر لرقم نشط</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20">
+                  كود متوقع: ACTIVE_PROTECTION_EXISTS
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                اختبار إرسال طلب حماية جديد لنفس الرقم الذي عليه حماية سارية حالياً دون المرور بمسار التجديد.
+              </p>
+              <button
+                onClick={async () => {
+                  const prot = amanStore.protections.find(p => p.status === 'active');
+                  if (!prot) {
+                    alert('لا توجد حماية نشطة حالياً للاختبار عليها.');
+                    return;
+                  }
+                  // Switch to customer momentarily
+                  const oldUser = amanStore.currentUser;
+                  amanStore.currentUser = amanStore.users.find(u => u.id === prot.customer_id)!;
+                  const res = await amanStore.rpcCreateProtectionRequest(
+                    prot.customer_number_id,
+                    prot.package_id,
+                    'pm-kuraimi',
+                    'TRX-DUPLICATE-TEST'
+                  );
+                  amanStore.currentUser = oldUser;
+                  if (!res.success && res.error_code === 'ACTIVE_PROTECTION_EXISTS') {
+                    setActionSuccess('نجح الاختبار! تم اعتراض الطلب المكرر بنجاح وتوليد كود: ACTIVE_PROTECTION_EXISTS');
+                  } else {
+                    setActionError({ message: 'فشل الاختبار: سمح النظام بإنشاء طلب مكرر!', action: 'راجع قيود rpc_create_protection_request' });
+                  }
+                }}
+                className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded-lg text-slate-200 transition-colors"
+              >
+                تشغيل اختبار منع التكرار
+              </button>
+            </div>
+
+            {/* Scenario 2: Approve before payment */}
+            <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs text-white">2. محاولة اعتماد طلب قبل تأكيد الحوالة</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                  كود متوقع: PAYMENT_NOT_VERIFIED
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                اختبار محاولة موافقة المدير على طلب حماية لم يتم تسجيل تدقيق مالي معتمد لحوالته بعد.
+              </p>
+              <button
+                onClick={async () => {
+                  const unverifiedReq = amanStore.requests.find(
+                    r => r.status === 'pending' && !amanStore.paymentLogs.some(l => l.request_id === r.id && l.verification_status === 'verified')
+                  );
+                  if (!unverifiedReq) {
+                    alert('جميع الطلبات المعلقة تم تدقيقها بالفعل. يمكنك إنشاء طلب جديد من واجهة العميل.');
+                    return;
+                  }
+                  const res = await amanStore.rpcApproveProtectionRequest(unverifiedReq.id);
+                  if (!res.success && res.error_code === 'PAYMENT_NOT_VERIFIED') {
+                    setActionSuccess('نجح الاختبار! تم حظر اعتماد الطلب قبل التحقق المالي وتوليد كود: PAYMENT_NOT_VERIFIED');
+                  } else {
+                    setActionError({ message: 'فشل الاختبار: سمح النظام بالموافقة دون تدقيق مالي!', action: 'راجع rpc_approve_protection_request' });
+                  }
+                }}
+                className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded-lg text-slate-200 transition-colors"
+              >
+                تشغيل اختبار التدقيق المالي الإلزامي
+              </button>
+            </div>
           </div>
         </div>
       )}
