@@ -40,8 +40,11 @@ import {
   Play,
   RotateCcw,
   Copy,
-  ExternalLink
+  ExternalLink,
+  Loader2
 } from 'lucide-react';
+import { AuthScreen } from './components/AuthScreen';
+import { UserProfile } from './types/auth';
 
 const SUPABASE_URL = 'https://pvgmtufzvwkdvtbtcijn.supabase.co';
 const SUPABASE_ANON_KEY =
@@ -54,17 +57,6 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     detectSessionInUrl: false
   }
 });
-
-interface UserProfile {
-  id: string;
-  email: string | null;
-  username: string | null;
-  full_name: string | null;
-  user_type: 'customer' | 'admin';
-  status: 'active' | 'suspended' | 'disabled';
-  is_deleted: boolean;
-  created_at: string;
-}
 
 interface CustomerNumberItem {
   id: string;
@@ -287,11 +279,8 @@ export default function App() {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Auth Form State
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
+  // Navigation Route State
+  const [currentRoute, setCurrentRoute] = useState<'/auth' | '/customer/home' | '/admin/home'>('/auth');
   const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -300,19 +289,22 @@ export default function App() {
       if (session?.user) {
         fetchUserProfile(session.user.id);
       } else {
+        setProfile(null);
+        setCurrentRoute('/auth');
         setLoading(false);
       }
     });
 
     const {
       data: { subscription }
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
-      if (session?.user) {
-        fetchUserProfile(session.user.id);
-      } else {
+      if (event === 'SIGNED_OUT' || !session?.user) {
         setProfile(null);
+        setCurrentRoute('/auth');
         setLoading(false);
+      } else if (session?.user) {
+        fetchUserProfile(session.user.id);
       }
     });
 
@@ -328,26 +320,99 @@ export default function App() {
         .single();
 
       if (!error && data) {
-        setProfile(data as UserProfile);
-        if (data.user_type === 'admin') setAdminViewMode('admin');
+        const userRec = data as UserProfile;
+
+        // Check account deletion
+        if (userRec.is_deleted) {
+          await supabase.auth.signOut();
+          setSession(null);
+          setProfile(null);
+          setCurrentRoute('/auth');
+          setAuthError('هذا الحساب تم حذفه من النظام، يرجى التواصل مع الإدارة.');
+          return;
+        }
+
+        // Check account suspension
+        if (userRec.status === 'suspended') {
+          await supabase.auth.signOut();
+          setSession(null);
+          setProfile(null);
+          setCurrentRoute('/auth');
+          setAuthError('الحساب معطل أو موقوف، يرجى مراجعة الإدارة');
+          return;
+        }
+
+        // Check account disabled
+        if (userRec.status === 'disabled') {
+          await supabase.auth.signOut();
+          setSession(null);
+          setProfile(null);
+          setCurrentRoute('/auth');
+          setAuthError('تم تعطيل هذا الحساب نهائياً، يرجى التواصل مع الإدارة.');
+          return;
+        }
+
+        // Must be active
+        if (userRec.status !== 'active') {
+          await supabase.auth.signOut();
+          setSession(null);
+          setProfile(null);
+          setCurrentRoute('/auth');
+          setAuthError('حالة الحساب لا تسمح بالدخول، يرجى مراجعة إدارة النظام.');
+          return;
+        }
+
+        // Validate user_type
+        if (userRec.user_type !== 'customer' && userRec.user_type !== 'admin') {
+          await supabase.auth.signOut();
+          setSession(null);
+          setProfile(null);
+          setCurrentRoute('/auth');
+          setAuthError('نوع الحساب غير صالح أو غير معتمد في النظام.');
+          return;
+        }
+
+        setProfile(userRec);
+        setAuthError(null);
+
+        if (userRec.user_type === 'admin') {
+          setAdminViewMode('admin');
+          setCurrentRoute('/admin/home');
+        } else {
+          setAdminViewMode('customer');
+          setCurrentRoute('/customer/home');
+        }
+
+        loadAllData(userId);
       } else {
-        setProfile({
-          id: userId,
-          email: session?.user?.email || null,
-          username: null,
-          full_name: (session?.user?.user_metadata as any)?.full_name || 'مستخدم مسجل',
-          user_type: (session?.user?.user_metadata as any)?.user_type === 'admin' ? 'admin' : 'customer',
-          status: 'active',
-          is_deleted: false,
-          created_at: new Date().toISOString()
-        });
+        // Missing record in public.users - do NOT create mock profile or grant access!
+        await supabase.auth.signOut();
+        setSession(null);
+        setProfile(null);
+        setCurrentRoute('/auth');
+        setAuthError('لم يتم العثور على سجل مستخدم مطابق في النظام. يرجى مراجعة الدعم الفني.');
       }
-      loadAllData(userId);
     } catch {
-      // ignore
+      await supabase.auth.signOut();
+      setSession(null);
+      setProfile(null);
+      setCurrentRoute('/auth');
+      setAuthError('تعذر التحقق من ملف تعريف المستخدم. يرجى إعادة المحاولة.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLoginSuccess = (userProf: UserProfile, targetRoute: '/customer/home' | '/admin/home') => {
+    setProfile(userProf);
+    setCurrentRoute(targetRoute);
+    if (userProf.user_type === 'admin') {
+      setAdminViewMode('admin');
+    } else {
+      setAdminViewMode('customer');
+    }
+    setAuthError(null);
+    loadAllData(userProf.id);
   };
 
   const loadAllData = async (userId: string) => {
@@ -679,35 +744,26 @@ export default function App() {
     } catch {}
   };
 
-  // Auth Submit
-  const handleAuthSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthError(null);
-    setActionLoading(true);
-    try {
-      if (authMode === 'signup') {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { data: { full_name: fullName } }
-        });
-        if (error) throw error;
-        setFeedback({ type: 'success', message: 'تم إنشاء الحساب بنجاح، مرحباً بك في أمان.' });
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-      }
-    } catch (err: any) {
-      setAuthError(err.message || 'فشلت عملية المصادقة');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
+  // Sign Out Handler
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    setSession(null);
-    setProfile(null);
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // ignore
+    } finally {
+      setSession(null);
+      setProfile(null);
+      setCurrentRoute('/auth');
+      setNumbers([]);
+      setRequests([]);
+      setProtections([]);
+      setPendingRequestsAdmin([]);
+      setAdminTasks([]);
+      setAdminNotifications([]);
+      setClientNotifications([]);
+      setAuthError(null);
+      setFeedback({ type: 'success', message: 'تم تسجيل الخروج بنجاح من النظام' });
+    }
   };
 
   const copyToClipboard = (text: string) => {
@@ -867,77 +923,25 @@ export default function App() {
 
               {/* In-Phone Screen Content */}
               <div className="flex-1 flex flex-col pt-7 overflow-hidden bg-slate-950 text-slate-100">
-                {!session ? (
-                  /* Auth Screen */
-                  <div className="flex-1 p-6 flex flex-col justify-center">
-                    <div className="text-center mb-6">
-                      <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-950 mb-3">
-                        <Shield className="w-7 h-7 text-white" />
+                {loading ? (
+                  /* Session Restoring / Startup Splash */
+                  <div className="flex-1 flex flex-col items-center justify-center p-6 text-center select-none" dir="rtl">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-amber-500 p-0.5 shadow-xl shadow-emerald-950/60 mb-4 animate-pulse">
+                      <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
+                        <Shield className="w-8 h-8 text-emerald-400" />
                       </div>
-                      <h2 className="text-lg font-bold text-white">خدمة أمان — حماية الأرقام</h2>
-                      <p className="text-xs text-slate-400 mt-1">سجل الدخول لإدارة أرقامك أو المهام التشغيلية</p>
                     </div>
-
-                    <form onSubmit={handleAuthSubmit} className="space-y-3">
-                      {authMode === 'signup' && (
-                        <div>
-                          <label className="text-xs text-slate-400 block mb-1">الاسم الكامل</label>
-                          <input
-                            type="text"
-                            value={fullName}
-                            onChange={(e) => setFullName(e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                            placeholder="محمد عبد الله"
-                            required
-                          />
-                        </div>
-                      )}
-                      <div>
-                        <label className="text-xs text-slate-400 block mb-1">البريد الإلكتروني</label>
-                        <input
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                          placeholder="user@example.com"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-slate-400 block mb-1">كلمة المرور</label>
-                        <input
-                          type="password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                          placeholder="••••••••"
-                          required
-                        />
-                      </div>
-
-                      {authError && <div className="text-red-400 text-xs p-2 rounded-lg bg-red-950/30 border border-red-900/40">{authError}</div>}
-
-                      <button
-                        type="submit"
-                        disabled={actionLoading}
-                        className="w-full mt-2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md transition-all"
-                      >
-                        {actionLoading ? 'جاري التحقق...' : authMode === 'signin' ? 'تسجيل الدخول' : 'إنشاء حساب جديد'}
-                      </button>
-                    </form>
-
-                    <div className="mt-4 text-center">
-                      <button
-                        onClick={() => {
-                          setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
-                          setAuthError(null);
-                        }}
-                        className="text-xs text-emerald-400 hover:underline"
-                      >
-                        {authMode === 'signin' ? 'ليس لديك حساب؟ إنشاء حساب جديد' : 'لديك حساب بالفعل؟ تسجيل الدخول'}
-                      </button>
-                    </div>
+                    <h2 className="text-lg font-bold text-white mb-1">AMAN — أمان</h2>
+                    <p className="text-xs text-slate-400 mb-5">جاري التحقق من الجلسة والصلاحيات...</p>
+                    <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
                   </div>
+                ) : !session || !profile || currentRoute === '/auth' ? (
+                  /* AUTH-01 Login Screen */
+                  <AuthScreen
+                    supabase={supabase}
+                    onLoginSuccess={handleLoginSuccess}
+                    initialError={authError}
+                  />
                 ) : profile?.user_type === 'admin' && adminViewMode === 'admin' ? (
                   /* Admin Interface */
                   <div className="flex-1 flex flex-col overflow-hidden">
