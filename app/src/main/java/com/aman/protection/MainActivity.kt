@@ -112,6 +112,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val adminManagementViewModel: com.aman.protection.presentation.admin.AdminManagementViewModel by viewModels {
+        object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val app = AmanApplication.instance
+                @Suppress("UNCHECKED_CAST")
+                return com.aman.protection.presentation.admin.AdminManagementViewModel(app.adminManagementRepository) as T
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -123,7 +133,8 @@ class MainActivity : ComponentActivity() {
                 adminProtectionViewModel = adminProtectionViewModel,
                 paymentMethodViewModel = paymentMethodViewModel,
                 adminTasksViewModel = adminTasksViewModel,
-                notificationsViewModel = notificationsViewModel
+                notificationsViewModel = notificationsViewModel,
+                adminManagementViewModel = adminManagementViewModel
             )
         }
     }

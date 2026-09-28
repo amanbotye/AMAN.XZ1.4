@@ -63,6 +63,9 @@ class AmanApplication : Application() {
     lateinit var notificationRepository: NotificationRepository
         private set
 
+    lateinit var adminManagementRepository: AdminManagementRepository
+        private set
+
     lateinit var appNavigator: AppNavigator
         private set
 
@@ -81,6 +84,7 @@ class AmanApplication : Application() {
         paymentMethodRepository = PaymentMethodRepositoryImpl()
         paymentTaskRepository = PaymentTaskRepositoryImpl(customerNumberRepository)
         notificationRepository = NotificationRepositoryImpl()
+        adminManagementRepository = AdminManagementRepositoryImpl()
         appNavigator = AppNavigator()
     }
 

@@ -5,6 +5,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import com.aman.protection.navigation.AmanDestination
+import com.aman.protection.presentation.admin.AdminManagementViewModel
 import com.aman.protection.presentation.admin.AdminProtectionViewModel
 import com.aman.protection.presentation.auth.AuthViewModel
 import com.aman.protection.presentation.customer.CustomerViewModel
@@ -17,7 +18,7 @@ import com.aman.protection.presentation.theme.AmanTheme
 
 /**
  * نقطة العرض والربط الرئيسية للتطبيق:
- * App -> Session -> Auth -> public.users -> User State -> Navigation -> Stages 1-4
+ * App -> Session -> Auth -> public.users -> User State -> Navigation -> Stages 1-5 Complete
  */
 @Composable
 fun AmanMainApp(
@@ -28,7 +29,8 @@ fun AmanMainApp(
     adminProtectionViewModel: AdminProtectionViewModel,
     paymentMethodViewModel: PaymentMethodViewModel,
     adminTasksViewModel: AdminTasksViewModel,
-    notificationsViewModel: NotificationsViewModel
+    notificationsViewModel: NotificationsViewModel,
+    adminManagementViewModel: AdminManagementViewModel
 ) {
     val uiState by mainViewModel.uiState.collectAsState()
 
@@ -43,6 +45,7 @@ fun AmanMainApp(
                     adminProtectionViewModel = adminProtectionViewModel,
                     adminTasksViewModel = adminTasksViewModel,
                     notificationsViewModel = notificationsViewModel,
+                    adminManagementViewModel = adminManagementViewModel,
                     onSignOut = mainViewModel::signOut
                 )
             }
