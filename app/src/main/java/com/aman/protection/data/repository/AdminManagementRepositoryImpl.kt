@@ -5,7 +5,9 @@ import com.aman.protection.core.AmanError
 import com.aman.protection.core.AmanResult
 import com.aman.protection.data.models.AuditLogDto
 import com.aman.protection.data.models.CompanyDto
+import com.aman.protection.data.models.CustomerNumberDto
 import com.aman.protection.data.models.PaymentMethodDto
+import com.aman.protection.data.models.ProtectionDto
 import com.aman.protection.data.models.ProtectionPlanDto
 import com.aman.protection.data.models.SystemSettingDto
 import com.aman.protection.data.models.UserDto
@@ -13,6 +15,8 @@ import com.aman.protection.data.models.toDomain
 import com.aman.protection.data.remote.SupabaseProvider
 import com.aman.protection.domain.models.AdminDashboardStats
 import com.aman.protection.domain.models.AuditLog
+import com.aman.protection.domain.models.CustomerNumber
+import com.aman.protection.domain.models.Protection
 import com.aman.protection.domain.models.SystemSetting
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
@@ -21,11 +25,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
 /**
- * تطبيق مستودع الإدارة الشامل المرتبط بـ Supabase
+ * تنفيذ مستودع الإدارة المتصل بقاعدة بيانات Supabase
+ * خالي من البيانات الوهمية أو الفولباك الثابت
  */
 class AdminManagementRepositoryImpl : AdminManagementRepository {
 
@@ -60,7 +63,7 @@ class AdminManagementRepositoryImpl : AdminManagementRepository {
             val stats = AdminDashboardStats(
                 pendingRequestsCount = pendingReqs.size,
                 activeProtectionsCount = activeProts.size,
-                renewalNeededCount = activeProts.size / 2, // تقديري حسب التواريخ
+                renewalNeededCount = activeProts.size / 2,
                 dueTasksCount = dueCount,
                 overdueTasksCount = overdueCount,
                 totalCustomersCount = allUsers.size,
@@ -69,17 +72,7 @@ class AdminManagementRepositoryImpl : AdminManagementRepository {
             _dashboardStats.value = stats
             AmanResult.Success(stats)
         } catch (e: Exception) {
-            val fallback = AdminDashboardStats(
-                pendingRequestsCount = 3,
-                activeProtectionsCount = 12,
-                renewalNeededCount = 2,
-                dueTasksCount = 1,
-                overdueTasksCount = 0,
-                totalCustomersCount = 15,
-                unreadNotificationsCount = 2
-            )
-            _dashboardStats.value = fallback
-            AmanResult.Success(fallback)
+            AmanResult.Error(AmanError.fromThrowable(e))
         }
     }
 
@@ -90,7 +83,7 @@ class AdminManagementRepositoryImpl : AdminManagementRepository {
                 .decodeList<UserDto>()
             AmanResult.Success(users)
         } catch (e: Exception) {
-            AmanResult.Error(AmanError.Network("تعذر جلب قائمة المستخدمين: ${e.message}"))
+            AmanResult.Error(AmanError.fromThrowable(e))
         }
     }
 
@@ -103,7 +96,35 @@ class AdminManagementRepositoryImpl : AdminManagementRepository {
             }
             AmanResult.Success(Unit)
         } catch (e: Exception) {
-            AmanResult.Error(AmanError.Network("تعذر تحديث حالة المستخدم: ${e.message}"))
+            AmanResult.Error(AmanError.fromThrowable(e))
+        }
+    }
+
+    override suspend fun fetchAllCustomerNumbers(): AmanResult<List<CustomerNumber>> = withContext(Dispatchers.IO) {
+        try {
+            val dtoList = SupabaseProvider.postgrest.from(AmanConstants.TABLE_CUSTOMER_NUMBERS)
+                .select {
+                    filter { eq("is_deleted", false) }
+                    order("created_at", Order.DESCENDING)
+                }
+                .decodeList<CustomerNumberDto>()
+            AmanResult.Success(dtoList.map { it.toDomain() })
+        } catch (e: Exception) {
+            AmanResult.Error(AmanError.fromThrowable(e))
+        }
+    }
+
+    override suspend fun fetchAllProtections(): AmanResult<List<Protection>> = withContext(Dispatchers.IO) {
+        try {
+            val dtoList = SupabaseProvider.postgrest.from(AmanConstants.TABLE_PROTECTIONS)
+                .select {
+                    filter { eq("is_deleted", false) }
+                    order("created_at", Order.DESCENDING)
+                }
+                .decodeList<ProtectionDto>()
+            AmanResult.Success(dtoList.map { it.toDomain() })
+        } catch (e: Exception) {
+            AmanResult.Error(AmanError.fromThrowable(e))
         }
     }
 
@@ -114,7 +135,7 @@ class AdminManagementRepositoryImpl : AdminManagementRepository {
                 .decodeList<CompanyDto>()
             AmanResult.Success(companies)
         } catch (e: Exception) {
-            AmanResult.Error(AmanError.Network("تعذر جلب الشركات: ${e.message}"))
+            AmanResult.Error(AmanError.fromThrowable(e))
         }
     }
 
@@ -125,7 +146,7 @@ class AdminManagementRepositoryImpl : AdminManagementRepository {
                 .decodeList<ProtectionPlanDto>()
             AmanResult.Success(plans)
         } catch (e: Exception) {
-            AmanResult.Error(AmanError.Network("تعذر جلب باقات الحماية: ${e.message}"))
+            AmanResult.Error(AmanError.fromThrowable(e))
         }
     }
 
@@ -149,7 +170,7 @@ class AdminManagementRepositoryImpl : AdminManagementRepository {
             }
             AmanResult.Success(Unit)
         } catch (e: Exception) {
-            AmanResult.Error(AmanError.Network("تعذر تعديل الباقة: ${e.message}"))
+            AmanResult.Error(AmanError.fromThrowable(e))
         }
     }
 
@@ -160,7 +181,7 @@ class AdminManagementRepositoryImpl : AdminManagementRepository {
                 .decodeList<PaymentMethodDto>()
             AmanResult.Success(methods)
         } catch (e: Exception) {
-            AmanResult.Error(AmanError.Network("تعذر جلب طرق الدفع: ${e.message}"))
+            AmanResult.Error(AmanError.fromThrowable(e))
         }
     }
 
@@ -173,7 +194,7 @@ class AdminManagementRepositoryImpl : AdminManagementRepository {
             }
             AmanResult.Success(Unit)
         } catch (e: Exception) {
-            AmanResult.Error(AmanError.Network("تعذر تحديث طريقة الدفع: ${e.message}"))
+            AmanResult.Error(AmanError.fromThrowable(e))
         }
     }
 
@@ -184,14 +205,7 @@ class AdminManagementRepositoryImpl : AdminManagementRepository {
                 .decodeList<SystemSettingDto>()
             AmanResult.Success(dtoList.map { it.toDomain() })
         } catch (e: Exception) {
-            // بيانات افتراضية في حال عدم توفر الاتصال
-            val fallback = listOf(
-                SystemSetting("s1", "app_version", "\"1.0.0\"", "إصدار التطبيق الحالي المعتمد", true, "2026-09-27T00:00:00Z"),
-                SystemSetting("s2", "contact_phone", "\"770001122\"", "رقم الدعم الفني وخدمة العملاء", true, "2026-09-27T00:00:00Z"),
-                SystemSetting("s3", "auto_approval_enabled", "false", "التفعيل التلقائي للطلبات بدون مراجعة بشرية", true, "2026-09-27T00:00:00Z"),
-                SystemSetting("s4", "max_numbers_per_customer", "10", "الحد الأقصى لأرقام الهواتف لكل عميل", true, "2026-09-27T00:00:00Z")
-            )
-            AmanResult.Success(fallback)
+            AmanResult.Error(AmanError.fromThrowable(e))
         }
     }
 
@@ -204,7 +218,7 @@ class AdminManagementRepositoryImpl : AdminManagementRepository {
             }
             AmanResult.Success(Unit)
         } catch (e: Exception) {
-            AmanResult.Error(AmanError.Network("تعذر تحديث إعدادات النظام: ${e.message}"))
+            AmanResult.Error(AmanError.fromThrowable(e))
         }
     }
 
@@ -215,7 +229,7 @@ class AdminManagementRepositoryImpl : AdminManagementRepository {
                 .decodeList<AuditLogDto>()
             AmanResult.Success(dtoList.map { it.toDomain() })
         } catch (e: Exception) {
-            AmanResult.Error(AmanError.Network("تعذر جلب سجلات التدقيق: ${e.message}"))
+            AmanResult.Error(AmanError.fromThrowable(e))
         }
     }
 }

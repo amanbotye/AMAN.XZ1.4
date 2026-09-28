@@ -58,6 +58,9 @@ sealed class AmanError(
         code = "UNKNOWN_ERROR"
     )
 
+    // Alias for Network
+    typealias Network = NetworkError
+
     companion object {
         fun fromThrowable(throwable: Throwable): AmanError {
             val msg = throwable.message?.lowercase() ?: ""
@@ -72,6 +75,19 @@ sealed class AmanError(
                     SessionExpired()
                 else ->
                     UnknownError(throwable.message)
+            }
+        }
+
+        fun fromCode(code: String, message: String? = null): AmanError {
+            return when (code) {
+                "NETWORK_ERROR" -> NetworkError(message)
+                "INVALID_CREDENTIALS" -> InvalidCredentials(message)
+                "ACCOUNT_SUSPENDED" -> AccountSuspended()
+                "USER_NOT_FOUND" -> UserNotFound()
+                "USER_ALREADY_EXISTS" -> UserAlreadyExists(message)
+                "SESSION_EXPIRED" -> SessionExpired()
+                "VALIDATION_ERROR" -> ValidationError(message ?: "بيانات غير صالحة")
+                else -> DatabaseError(message, code)
             }
         }
     }

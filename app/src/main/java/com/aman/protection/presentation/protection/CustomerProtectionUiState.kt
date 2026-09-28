@@ -10,7 +10,8 @@ enum class CustomerProtectionTab {
     MY_PROTECTIONS,
     MY_REQUESTS,
     PLANS_CATALOG,
-    CREATE_REQUEST
+    CREATE_REQUEST,
+    RENEWAL
 }
 
 data class CustomerProtectionUiState(
@@ -32,6 +33,9 @@ data class CustomerProtectionUiState(
     val transferReference: String = "",
     val customerNote: String = "",
     val isSubmittingRequest: Boolean = false,
+
+    // Renewal State (CUS-05)
+    val selectedProtectionForRenewal: Protection? = null,
 
     // Validation Alert
     val validationWarning: String? = null,

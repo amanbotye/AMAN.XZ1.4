@@ -7,14 +7,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -36,28 +36,34 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.aman.protection.data.models.UserDto
+import com.aman.protection.domain.models.User
 import com.aman.protection.presentation.admin.AdminManagementViewModel
 import com.aman.protection.presentation.admin.AdminProtectionViewModel
 import com.aman.protection.presentation.admin.screens.AdminAuditLogsScreen
 import com.aman.protection.presentation.admin.screens.AdminCompaniesScreen
+import com.aman.protection.presentation.admin.screens.AdminCustomerNumbersScreen
 import com.aman.protection.presentation.admin.screens.AdminDashboardScreen
+import com.aman.protection.presentation.admin.screens.AdminNotificationsScreen
 import com.aman.protection.presentation.admin.screens.AdminPaymentMethodsScreen
 import com.aman.protection.presentation.admin.screens.AdminPlansScreen
 import com.aman.protection.presentation.admin.screens.AdminProtectionRequestsScreen
+import com.aman.protection.presentation.admin.screens.AdminProtectionsScreen
 import com.aman.protection.presentation.admin.screens.AdminSettingsScreen
 import com.aman.protection.presentation.admin.screens.AdminTasksScreen
 import com.aman.protection.presentation.admin.screens.AdminUsersScreen
 import com.aman.protection.presentation.notifications.NotificationsViewModel
-import com.aman.protection.presentation.notifications.screens.CustomerNotificationsScreen
 import com.aman.protection.presentation.tasks.AdminTasksViewModel
 import com.aman.protection.presentation.theme.Amber500
 import com.aman.protection.presentation.theme.Navy900
 import com.aman.protection.presentation.theme.Slate50
 
+/**
+ * شاشة المشرف والإدارة العامة ADM (Admin Portal)
+ * تتضمن الشاشات الإدارية الـ 11 كاملة وفق مصفوفة الشاشات المعتمدة
+ */
 @Composable
 fun AdminHomeScreen(
-    user: UserDto,
+    user: User,
     adminProtectionViewModel: AdminProtectionViewModel,
     adminTasksViewModel: AdminTasksViewModel,
     notificationsViewModel: NotificationsViewModel,
@@ -65,15 +71,15 @@ fun AdminHomeScreen(
     onSignOut: () -> Unit
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
+    val mgmtState by adminManagementViewModel.uiState.collectAsState()
     val tasksState by adminTasksViewModel.uiState.collectAsState()
     val notifState by notificationsViewModel.uiState.collectAsState()
-    val mgmtState by adminManagementViewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) {
-        adminProtectionViewModel.loadAdminData()
-        adminTasksViewModel.loadTasks()
-        notificationsViewModel.loadAdminNotifications()
         adminManagementViewModel.loadAllManagementData()
+        adminProtectionViewModel.loadPendingRequests()
+        adminTasksViewModel.loadAllTasks()
+        notificationsViewModel.loadAdminNotifications()
     }
 
     Box(
@@ -82,36 +88,33 @@ fun AdminHomeScreen(
             .background(Slate50)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Admin Header Bar
+            // Admin Top Bar
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Navy900)
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Navy900),
+                shape = androidx.compose.ui.graphics.RectangleShape
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp),
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
-                            .background(Amber500, CircleShape),
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Amber500),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.AdminPanelSettings,
+                            imageVector = Icons.Default.Security,
                             contentDescription = null,
                             tint = Navy900,
                             modifier = Modifier.size(22.dp)
                         )
                     }
-
                     Spacer(modifier = Modifier.width(10.dp))
-
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = user.fullName ?: user.email ?: "مدير النظام",
@@ -126,7 +129,6 @@ fun AdminHomeScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                     }
-
                     IconButton(onClick = onSignOut) {
                         Icon(
                             imageVector = Icons.Default.ExitToApp,
@@ -137,7 +139,7 @@ fun AdminHomeScreen(
                 }
             }
 
-            // Scrollable Tab Navigation
+            // Scrollable Tab Navigation across all 11 Admin screens
             ScrollableTabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = Color.White,
@@ -204,39 +206,49 @@ fun AdminHomeScreen(
                 Tab(
                     selected = selectedTab == 3,
                     onClick = { selectedTab = 3 },
-                    text = { Text("المستخدمين", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                    text = { Text("العملاء", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                 )
                 Tab(
                     selected = selectedTab == 4,
                     onClick = { selectedTab = 4 },
-                    text = { Text("الشركات والبادئات", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                    text = { Text("أرقام المشتركين", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                 )
                 Tab(
                     selected = selectedTab == 5,
                     onClick = { selectedTab = 5 },
-                    text = { Text("باقات الحماية", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                    text = { Text("الحمايات والاشتراكات", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                 )
                 Tab(
                     selected = selectedTab == 6,
                     onClick = { selectedTab = 6 },
-                    text = { Text("طرق الدفع", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                    text = { Text("الشركات والبادئات", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                 )
                 Tab(
                     selected = selectedTab == 7,
                     onClick = { selectedTab = 7 },
-                    text = { Text("إعدادات النظام", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                    text = { Text("باقات الحماية", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                 )
                 Tab(
                     selected = selectedTab == 8,
                     onClick = { selectedTab = 8 },
-                    text = { Text("سجل العمليات", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                    text = { Text("طرق الدفع", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                 )
                 Tab(
                     selected = selectedTab == 9,
                     onClick = { selectedTab = 9 },
+                    text = { Text("سجل العمليات", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                )
+                Tab(
+                    selected = selectedTab == 10,
+                    onClick = { selectedTab = 10 },
+                    text = { Text("إعدادات النظام", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                )
+                Tab(
+                    selected = selectedTab == 11,
+                    onClick = { selectedTab = 11 },
                     text = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("الإشعارات", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("الإشعارات الإدارية", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                             if (notifState.unreadCount > 0) {
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Box(
@@ -265,12 +277,14 @@ fun AdminHomeScreen(
                     1 -> AdminProtectionRequestsScreen(viewModel = adminProtectionViewModel, modifier = Modifier.fillMaxSize())
                     2 -> AdminTasksScreen(viewModel = adminTasksViewModel)
                     3 -> AdminUsersScreen(viewModel = adminManagementViewModel)
-                    4 -> AdminCompaniesScreen(viewModel = adminManagementViewModel)
-                    5 -> AdminPlansScreen(viewModel = adminManagementViewModel)
-                    6 -> AdminPaymentMethodsScreen(viewModel = adminManagementViewModel)
-                    7 -> AdminSettingsScreen(viewModel = adminManagementViewModel)
-                    8 -> AdminAuditLogsScreen(viewModel = adminManagementViewModel)
-                    9 -> CustomerNotificationsScreen(userId = user.id, viewModel = notificationsViewModel)
+                    4 -> AdminCustomerNumbersScreen(viewModel = adminManagementViewModel)
+                    5 -> AdminProtectionsScreen(viewModel = adminManagementViewModel)
+                    6 -> AdminCompaniesScreen(viewModel = adminManagementViewModel)
+                    7 -> AdminPlansScreen(viewModel = adminManagementViewModel)
+                    8 -> AdminPaymentMethodsScreen(viewModel = adminManagementViewModel)
+                    9 -> AdminAuditLogsScreen(viewModel = adminManagementViewModel)
+                    10 -> AdminSettingsScreen(viewModel = adminManagementViewModel)
+                    11 -> AdminNotificationsScreen(viewModel = notificationsViewModel)
                 }
             }
         }

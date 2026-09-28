@@ -33,31 +33,43 @@ class AdminManagementViewModel(
                 else -> Unit
             }
 
-            // 3. Companies
+            // 3. Customer Numbers (ADM-03)
+            when (val res = adminManagementRepository.fetchAllCustomerNumbers()) {
+                is AmanResult.Success -> _uiState.update { it.copy(customerNumbers = res.data) }
+                else -> Unit
+            }
+
+            // 4. Protections (ADM-05)
+            when (val res = adminManagementRepository.fetchAllProtections()) {
+                is AmanResult.Success -> _uiState.update { it.copy(protections = res.data) }
+                else -> Unit
+            }
+
+            // 5. Companies
             when (val res = adminManagementRepository.fetchAllCompanies()) {
                 is AmanResult.Success -> _uiState.update { it.copy(companies = res.data) }
                 else -> Unit
             }
 
-            // 4. Plans
+            // 6. Plans
             when (val res = adminManagementRepository.fetchAllPlans()) {
                 is AmanResult.Success -> _uiState.update { it.copy(plans = res.data) }
                 else -> Unit
             }
 
-            // 5. Payment Methods
+            // 7. Payment Methods
             when (val res = adminManagementRepository.fetchAllPaymentMethods()) {
                 is AmanResult.Success -> _uiState.update { it.copy(paymentMethods = res.data) }
                 else -> Unit
             }
 
-            // 6. Settings
+            // 8. Settings
             when (val res = adminManagementRepository.fetchSystemSettings()) {
                 is AmanResult.Success -> _uiState.update { it.copy(settings = res.data) }
                 else -> Unit
             }
 
-            // 7. Audit Logs
+            // 9. Audit Logs
             when (val res = adminManagementRepository.fetchAuditLogs()) {
                 is AmanResult.Success -> _uiState.update { it.copy(auditLogs = res.data) }
                 else -> Unit

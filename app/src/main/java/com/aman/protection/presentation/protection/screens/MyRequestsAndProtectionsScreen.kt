@@ -17,16 +17,20 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -45,18 +49,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aman.protection.domain.models.Protection
 import com.aman.protection.domain.models.ProtectionRequest
-import com.aman.protection.domain.models.RequestStatus
 import com.aman.protection.domain.models.RenewalHealth
+import com.aman.protection.domain.models.RequestStatus
+import com.aman.protection.presentation.protection.CustomerProtectionTab
 import com.aman.protection.presentation.protection.CustomerProtectionViewModel
 import com.aman.protection.presentation.theme.Amber500
 import com.aman.protection.presentation.theme.Emerald600
 import com.aman.protection.presentation.theme.Navy900
 import com.aman.protection.presentation.theme.Red600
-import com.aman.protection.presentation.theme.Slate100
 import com.aman.protection.presentation.theme.Slate50
 import com.aman.protection.presentation.theme.Slate700
 import com.aman.protection.presentation.theme.Slate900
 
+/**
+ * شاشة متابعة الطلبات والحمايات CUS-03 & CUS-04
+ * مع دعم شاشة التجديد CUS-05
+ */
 @Composable
 fun MyRequestsAndProtectionsScreen(
     viewModel: CustomerProtectionViewModel,
@@ -64,6 +72,21 @@ fun MyRequestsAndProtectionsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableIntStateOf(0) } // 0: Requests, 1: Protections
+
+    // إذا كان المستخدم في وضع إنشاء طلب
+    if (uiState.currentTab == CustomerProtectionTab.CREATE_REQUEST) {
+        CreateProtectionRequestScreen(viewModel = viewModel)
+        return
+    }
+
+    // إذا كان المستخدم في وضع طلب التجديد (CUS-05)
+    if (uiState.currentTab == CustomerProtectionTab.RENEWAL && uiState.selectedProtectionForRenewal != null) {
+        CustomerRenewalScreen(
+            protection = uiState.selectedProtectionForRenewal!!,
+            viewModel = viewModel
+        )
+        return
+    }
 
     Box(
         modifier = Modifier
@@ -89,8 +112,8 @@ fun MyRequestsAndProtectionsScreen(
                 }
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "متابعة الحمايات والطلبات",
-                    fontSize = 18.sp,
+                    text = "متابعة الحمايات والطلبات (1.5.3 & 1.5.4)",
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     color = Navy900
                 )
@@ -112,16 +135,21 @@ fun MyRequestsAndProtectionsScreen(
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    text = { Text("الحمايات الفعالة (${uiState.protections.size})", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                    text = { Text("حماياتي النشطة (${uiState.protections.size})", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                 )
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            if (selectedTab == 0) {
+            // Content List
+            if (uiState.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Emerald600)
+                }
+            } else if (selectedTab == 0) {
                 // Requests List
                 if (uiState.requests.isEmpty()) {
-                    EmptyStateCard(title = "لا توجد طلبات حماية حالياً", desc = "يمكنك تقديم طلب حماية جديد لأي من أرقامك المسجلة.")
+                    EmptyStateCard(title = "لا توجد طلبات حماية حالياً", desc = "يمكنك تقديم طلب حماية جديد من شاشة أرقامي.")
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -142,7 +170,10 @@ fun MyRequestsAndProtectionsScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items(uiState.protections, key = { it.id }) { prot ->
-                            ProtectionItemCard(protection = prot)
+                            ProtectionItemCard(
+                                protection = prot,
+                                onRenewalClick = { viewModel.startRenewalForProtection(prot) }
+                            )
                         }
                     }
                 }
@@ -234,9 +265,11 @@ private fun RequestItemCard(request: ProtectionRequest) {
 }
 
 @Composable
-private fun ProtectionItemCard(protection: Protection) {
+private fun ProtectionItemCard(
+    protection: Protection,
+    onRenewalClick: () -> Unit
+) {
     val (health, daysRemaining) = RenewalHealth.calculate(protection.endAt)
-
     val (badgeBg, badgeText) = when (health) {
         RenewalHealth.SAFE -> Pair(Color(0xFFDCFCE7), Color(0xFF15803D))
         RenewalHealth.SOON -> Pair(Color(0xFFFEF3C7), Color(0xFFD97706))
@@ -304,11 +337,28 @@ private fun ProtectionItemCard(protection: Protection) {
             )
 
             Spacer(modifier = Modifier.height(4.dp))
+
             Text(
                 text = health.description,
                 fontSize = 11.sp,
                 color = badgeText
             )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Renewal action button
+            OutlinedButton(
+                onClick = onRenewalClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(36.dp),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Emerald600)
+            ) {
+                Icon(imageVector = Icons.Default.Autorenew, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("طلب تجديد الحماية (1.5.5)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }
