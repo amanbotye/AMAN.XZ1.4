@@ -1,6 +1,7 @@
 package com.aman.protection.presentation.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -40,7 +41,9 @@ import androidx.compose.ui.unit.sp
 import com.aman.protection.data.models.UserDto
 import com.aman.protection.data.models.toDomain
 import com.aman.protection.presentation.customer.CustomerViewModel
+import com.aman.protection.presentation.customer.screens.CustomerAccountScreen
 import com.aman.protection.presentation.customer.screens.CustomerNumbersScreen
+import com.aman.protection.presentation.customer.screens.CustomerOverviewScreen
 import com.aman.protection.presentation.notifications.NotificationsViewModel
 import com.aman.protection.presentation.notifications.screens.CustomerNotificationsScreen
 import com.aman.protection.presentation.payment.PaymentMethodViewModel
@@ -54,6 +57,10 @@ import com.aman.protection.presentation.theme.Emerald600
 import com.aman.protection.presentation.theme.Navy900
 import com.aman.protection.presentation.theme.Slate50
 
+/**
+ * الشاشة الرئيسية لتطبيق العميل (بوابة العميل)
+ * مطابقة للمرجع الوظيفي AMAN.XZ.txt — البند 1.5 والمرحلة 02
+ */
 @Composable
 fun CustomerHomeScreen(
     user: UserDto,
@@ -64,9 +71,12 @@ fun CustomerHomeScreen(
     onSignOut: () -> Unit
 ) {
     val domainUser = user.toDomain()
+    val customerState by customerViewModel.uiState.collectAsState()
     val protectionState by protectionViewModel.uiState.collectAsState()
     val notifState by notificationsViewModel.uiState.collectAsState()
-    var selectedTopTab by remember { mutableIntStateOf(0) } // 0: Numbers, 1: Protections, 2: Plans, 3: Payments, 4: Notifications
+
+    // 0: الرئيسية (Overview), 1: أرقامي, 2: الحمايات والطلبات, 3: دليل الباقات, 4: طرق الدفع, 5: الإشعارات, 6: حسابي
+    var selectedTopTab by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(user.id) {
         customerViewModel.loadData(user.id)
@@ -89,7 +99,7 @@ fun CustomerHomeScreen(
             .background(Slate50)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Customer Header Bar
+            // شريط العنوان العلوي للعميل
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -106,12 +116,13 @@ fun CustomerHomeScreen(
                     Box(
                         modifier = Modifier
                             .size(38.dp)
-                            .background(Emerald600, CircleShape),
+                            .background(Emerald600, CircleShape)
+                            .clickable { selectedTopTab = 6 },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Person,
-                            contentDescription = null,
+                            contentDescription = "الملف الشخصي",
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
@@ -119,9 +130,13 @@ fun CustomerHomeScreen(
 
                     Spacer(modifier = Modifier.width(10.dp))
 
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { selectedTopTab = 6 }
+                    ) {
                         Text(
-                            text = domainUser.displayName,
+                            text = customerState.customer?.user?.displayName ?: domainUser.displayName,
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
@@ -136,14 +151,14 @@ fun CustomerHomeScreen(
                     IconButton(onClick = onSignOut) {
                         Icon(
                             imageVector = Icons.Default.ExitToApp,
-                            contentDescription = "خروج",
+                            contentDescription = "تسجيل الخروج",
                             tint = Color(0xFFEF4444)
                         )
                     }
                 }
             }
 
-            // Top Navigation Scrollable Tab Bar
+            // شريط التبويبات العلوي للعميل
             ScrollableTabRow(
                 selectedTabIndex = selectedTopTab,
                 containerColor = Color.White,
@@ -154,26 +169,31 @@ fun CustomerHomeScreen(
                 Tab(
                     selected = selectedTopTab == 0,
                     onClick = { selectedTopTab = 0 },
-                    text = { Text("أرقامي", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                    text = { Text("الرئيسية", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                 )
                 Tab(
                     selected = selectedTopTab == 1,
                     onClick = { selectedTopTab = 1 },
-                    text = { Text("الحمايات والطلبات", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                    text = { Text("أرقامي", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                 )
                 Tab(
                     selected = selectedTopTab == 2,
                     onClick = { selectedTopTab = 2 },
-                    text = { Text("دليل الباقات", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                    text = { Text("الحمايات والطلبات", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                 )
                 Tab(
                     selected = selectedTopTab == 3,
                     onClick = { selectedTopTab = 3 },
-                    text = { Text("طرق الدفع", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                    text = { Text("دليل الباقات", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                 )
                 Tab(
                     selected = selectedTopTab == 4,
                     onClick = { selectedTopTab = 4 },
+                    text = { Text("طرق الدفع", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                )
+                Tab(
+                    selected = selectedTopTab == 5,
+                    onClick = { selectedTopTab = 5 },
                     text = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("الإشعارات", fontWeight = FontWeight.Bold, fontSize = 12.sp)
@@ -196,39 +216,70 @@ fun CustomerHomeScreen(
                         }
                     }
                 )
+                Tab(
+                    selected = selectedTopTab == 6,
+                    onClick = { selectedTopTab = 6 },
+                    text = { Text("حسابي", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                )
             }
 
-            // Tab Content
+            // محتوى التبويب المختار
             Box(modifier = Modifier.weight(1f)) {
                 when (selectedTopTab) {
                     0 -> {
+                        CustomerOverviewScreen(
+                            user = customerState.customer?.user ?: domainUser,
+                            activeProtections = protectionState.protections.filter { it.isLiveActive },
+                            totalNumbersCount = customerState.numbers.size,
+                            pendingRequestsCount = protectionState.requests.count { it.isPending },
+                            isLoading = customerState.isLoading || protectionState.isLoading,
+                            errorMessage = customerState.errorMessage ?: protectionState.errorMessage,
+                            onRetry = {
+                                customerViewModel.loadData(user.id)
+                                protectionViewModel.loadBaseData()
+                            },
+                            onNavigateToNumbers = { selectedTopTab = 1 },
+                            onNavigateToProtections = { selectedTopTab = 2 },
+                            onNavigateToPlans = { selectedTopTab = 3 },
+                            onNavigateToNotifications = { selectedTopTab = 5 },
+                            onNavigateToAccount = { selectedTopTab = 6 }
+                        )
+                    }
+                    1 -> {
                         CustomerNumbersScreen(
                             user = domainUser,
                             viewModel = customerViewModel,
                             onSignOut = onSignOut
                         )
                     }
-                    1 -> {
+                    2 -> {
                         MyRequestsAndProtectionsScreen(
                             viewModel = protectionViewModel,
                             onBack = { selectedTopTab = 0 }
                         )
                     }
-                    2 -> {
+                    3 -> {
                         PlansCatalogScreen(
                             plans = protectionState.allPlans,
                             onBack = { selectedTopTab = 0 }
                         )
                     }
-                    3 -> {
+                    4 -> {
                         PaymentMethodsScreen(
                             viewModel = paymentMethodViewModel
                         )
                     }
-                    4 -> {
+                    5 -> {
                         CustomerNotificationsScreen(
                             userId = user.id,
                             viewModel = notificationsViewModel
+                        )
+                    }
+                    6 -> {
+                        CustomerAccountScreen(
+                            user = customerState.customer?.user ?: domainUser,
+                            viewModel = customerViewModel,
+                            onSignOut = onSignOut
                         )
                     }
                 }

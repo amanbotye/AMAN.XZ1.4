@@ -27,6 +27,18 @@ class CustomerViewModel(
 
     init {
         observeNumbersList()
+        observeCustomerProfile()
+    }
+
+    private fun observeCustomerProfile() {
+        viewModelScope.launch {
+            customerRepository.currentCustomer.collect { cust ->
+                _uiState.value = _uiState.value.copy(
+                    customer = cust,
+                    editFullName = if (_uiState.value.editFullName.isBlank()) cust?.fullName ?: "" else _uiState.value.editFullName
+                )
+            }
+        }
     }
 
     private fun observeNumbersList() {
@@ -216,6 +228,68 @@ class CustomerViewModel(
                 }
             }
         }
+    }
+
+    fun initProfileEdit(name: String) {
+        _uiState.value = _uiState.value.copy(
+            editFullName = name,
+            profileErrorMessage = null,
+            profileSuccessMessage = null
+        )
+    }
+
+    fun onEditFullNameChanged(name: String) {
+        _uiState.value = _uiState.value.copy(
+            editFullName = name,
+            profileErrorMessage = null,
+            profileSuccessMessage = null
+        )
+    }
+
+    fun saveProfile(userId: String) {
+        val newName = _uiState.value.editFullName.trim()
+        if (newName.isBlank()) {
+            _uiState.value = _uiState.value.copy(profileErrorMessage = "الاسم الكامل مطلوب")
+            return
+        }
+        if (newName.length < 3) {
+            _uiState.value = _uiState.value.copy(profileErrorMessage = "الاسم يجب أن لا يقل عن 3 أحرف")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isSavingProfile = true,
+                profileErrorMessage = null,
+                profileSuccessMessage = null
+            )
+            val result = customerRepository.updateCustomerName(userId, newName)
+            when (result) {
+                is AmanResult.Success -> {
+                    customerRepository.getCustomer(userId)
+                    _uiState.value = _uiState.value.copy(
+                        isSavingProfile = false,
+                        profileSuccessMessage = "تم تحديث الملف الشخصي بنجاح"
+                    )
+                }
+                is AmanResult.Error -> {
+                    _uiState.value = _uiState.value.copy(
+                        isSavingProfile = false,
+                        profileErrorMessage = result.error.messageAr
+                    )
+                }
+                else -> {
+                    _uiState.value = _uiState.value.copy(isSavingProfile = false)
+                }
+            }
+        }
+    }
+
+    fun clearProfileFeedback() {
+        _uiState.value = _uiState.value.copy(
+            profileErrorMessage = null,
+            profileSuccessMessage = null
+        )
     }
 
     fun dismissFeedback() {

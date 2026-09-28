@@ -3,6 +3,8 @@ package com.aman.protection.data.repository
 import com.aman.protection.core.AmanConstants
 import com.aman.protection.core.AmanError
 import com.aman.protection.core.AmanResult
+import com.aman.protection.data.models.CustomerNumberDto
+import com.aman.protection.data.models.ProtectionDto
 import com.aman.protection.data.models.UserDto
 import com.aman.protection.data.models.toCustomer
 import com.aman.protection.data.models.toDomain
@@ -47,13 +49,32 @@ class CustomerRepositoryImpl : CustomerRepository {
                             eq("is_deleted", false)
                         }
                     }
-                    .decodeList<UserDto>()
+                    .decodeList<CustomerNumberDto>()
                 list.size
             } catch (_: Exception) {
                 0
             }
 
-            val customer = user.toCustomer(totalNumbers = numbersCount)
+            // 3. حساب عدد الحمايات النشطة
+            val protectionsCount = try {
+                val list = SupabaseProvider.postgrest.from(AmanConstants.TABLE_PROTECTIONS)
+                    .select {
+                        filter {
+                            eq("customer_id", userId)
+                            eq("status", "active")
+                            eq("is_deleted", false)
+                        }
+                    }
+                    .decodeList<ProtectionDto>()
+                list.size
+            } catch (_: Exception) {
+                0
+            }
+
+            val customer = user.toCustomer(
+                totalNumbers = numbersCount,
+                activeProtections = protectionsCount
+            )
             _currentCustomer.value = customer
             AmanResult.Success(customer)
         } catch (e: Exception) {

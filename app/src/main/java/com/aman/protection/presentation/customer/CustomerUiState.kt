@@ -9,6 +9,9 @@ enum class CustomerScreenTab {
     ADD_NUMBER
 }
 
+/**
+ * حالة واجهة العميل (إدارة الأرقام + الملف الشخصي والحساب)
+ */
 data class CustomerUiState(
     val isLoading: Boolean = false,
     val customer: Customer? = null,
@@ -28,6 +31,12 @@ data class CustomerUiState(
     val selectedNumberDetails: CustomerNumber? = null,
     val isUpdatingNotes: Boolean = false,
     val editingNotesText: String = "",
+
+    // Account / Profile edit state
+    val editFullName: String = "",
+    val isSavingProfile: Boolean = false,
+    val profileErrorMessage: String? = null,
+    val profileSuccessMessage: String? = null,
 
     // Feedback
     val successMessage: String? = null,
