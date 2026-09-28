@@ -1,0 +1,19 @@
+# Archived Files
+
+The following project documentation was moved here to keep the repository minimal and focused on the core source and Android build files:
+
+- AMAN-IMPLEMENTATION-STATUS.md
+- FINAL_COMPREHENSIVE_AUDIT.md
+- PROJECT_BASELINE.md
+- STAGE_1_REPORT.md
+- STAGE_2_REPORT.md
+- STAGE_3_REPORT.md
+- STAGE_4_REPORT.md
+- STAGE_5_REPORT.md
+
+The primary kept files are:
+- AMAN_XZ1_4.txt
+- Supabase Snippet Untitled query New.csv
+- app/
+- src/
+- build scripts and Android project files
