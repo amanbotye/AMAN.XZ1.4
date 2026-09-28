@@ -22,10 +22,7 @@ import {
   Search,
   Check,
   RefreshCw,
-  FolderGit2,
   Info,
-  X,
-  PhoneCall,
   Clock,
   CheckCircle,
   XCircle,
@@ -37,14 +34,57 @@ import {
   Lock,
   Bell,
   CheckSquare,
-  Play,
   RotateCcw,
-  Copy,
   ExternalLink,
-  Loader2
+  Loader2,
+  Home,
+  Users,
+  Settings,
+  Activity,
+  Menu
 } from 'lucide-react';
-import { AuthScreen } from './components/AuthScreen';
-import { UserProfile } from './types/auth';
+
+import {
+  UserProfile,
+  CustomerNumberItem,
+  ProtectionPlan,
+  PaymentMethod,
+  ProtectionRequestItem,
+  ProtectionItem,
+  PaymentTaskItem,
+  NotificationItem,
+  AuditLogItem,
+  TelecomProvider,
+  TelecomProviderPrefix,
+  CompanyTaskSettingItem,
+  SystemSettingItem
+} from './types/aman';
+
+// Auth Screens (01 - 03)
+import { LoginScreen } from './components/auth/LoginScreen';
+import { CreateAccountScreen } from './components/auth/CreateAccountScreen';
+import { PasswordRecoveryScreen } from './components/auth/PasswordRecoveryScreen';
+
+// Customer Screens (04 - 10)
+import { CustomerHomeScreen } from './components/customer/CustomerHomeScreen';
+import { CustomerNumbersScreen } from './components/customer/CustomerNumbersScreen';
+import { CustomerProtectionRequestsScreen } from './components/customer/CustomerProtectionRequestsScreen';
+import { CustomerProtectionsScreen } from './components/customer/CustomerProtectionsScreen';
+import { CustomerNotificationsScreen } from './components/customer/CustomerNotificationsScreen';
+import { CustomerAccountScreen } from './components/customer/CustomerAccountScreen';
+
+// Admin Screens (11 - 21)
+import { AdminDashboardScreen } from './components/admin/AdminDashboardScreen';
+import { AdminCustomersScreen } from './components/admin/AdminCustomersScreen';
+import { AdminCustomerNumbersScreen } from './components/admin/AdminCustomerNumbersScreen';
+import { AdminProtectionRequestsScreen } from './components/admin/AdminProtectionRequestsScreen';
+import { AdminProtectionsScreen } from './components/admin/AdminProtectionsScreen';
+import { AdminPaymentTasksScreen } from './components/admin/AdminPaymentTasksScreen';
+import { AdminTelecomProvidersScreen } from './components/admin/AdminTelecomProvidersScreen';
+import { AdminPaymentMethodsScreen } from './components/admin/AdminPaymentMethodsScreen';
+import { AdminNotificationsScreen } from './components/admin/AdminNotificationsScreen';
+import { AdminAuditLogsScreen } from './components/admin/AdminAuditLogsScreen';
+import { AdminSystemSettingsScreen } from './components/admin/AdminSystemSettingsScreen';
 
 const SUPABASE_URL = 'https://pvgmtufzvwkdvtbtcijn.supabase.co';
 const SUPABASE_ANON_KEY =
@@ -58,124 +98,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 });
 
-interface CustomerNumberItem {
-  id: string;
-  customer_id: string;
-  phone_number: string;
-  normalized_phone_number: string;
-  company_id: string;
-  detected_prefix: string;
-  status: string;
-  notes: string | null;
-  is_deleted: boolean;
-  created_at: string;
-  company_name_ar?: string;
-  company_code?: string;
-}
-
-interface ProtectionPlan {
-  id: string;
-  company_id: string;
-  name_ar: string;
-  name_en?: string;
-  description?: string;
-  price: number;
-  currency: string;
-  duration_days: number;
-  is_active: boolean;
-  is_visible: boolean;
-}
-
-interface PaymentMethod {
-  id: string;
-  name_ar: string;
-  code: string;
-  instructions?: string;
-  account_name?: string;
-  account_identifier?: string;
-  display_order: number;
-}
-
-interface ProtectionRequestItem {
-  id: string;
-  customer_id: string;
-  customer_number_id: string;
-  company_id: string;
-  package_id: string;
-  payment_method_id: string;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
-  requested_price: number;
-  requested_currency: string;
-  requested_duration_days: number;
-  payment_transfer_reference?: string;
-  customer_note?: string;
-  rejection_reason?: string;
-  created_at: string;
-  phone_number?: string;
-  package_name?: string;
-  payment_method_name?: string;
-}
-
-interface ProtectionItem {
-  id: string;
-  customer_id: string;
-  customer_number_id: string;
-  company_id: string;
-  package_name_snapshot: string;
-  price_snapshot: number;
-  currency_snapshot: string;
-  duration_days_snapshot: number;
-  start_at: string;
-  end_at: string;
-  status: string;
-  phone_number?: string;
-}
-
-// Stage 4: Tasks & Notifications
-interface PaymentTaskItem {
-  id: string;
-  protection_id: string;
-  customer_id: string;
-  customer_number_id: string;
-  company_id: string;
-  task_number: number;
-  task_type: string;
-  amount: number;
-  currency: string;
-  scheduled_at: string;
-  due_at: string;
-  status: string;
-  completed_at?: string | null;
-  completed_by?: string | null;
-  execution_note?: string | null;
-  source_task_interval_days: number;
-  created_at: string;
-  phone_number?: string;
-  company_name?: string;
-}
-
-interface NotificationItem {
-  id: string;
-  user_id?: string;
-  notification_type?: string;
-  title: string;
-  body: string;
-  related_request_id?: string;
-  related_protection_id?: string;
-  related_task_id?: string;
-  is_read: boolean;
-  read_at?: string;
-  created_at: string;
-}
-
-const KNOWN_OPERATORS: Record<string, { nameAr: string; code: string; bg: string; text: string }> = {
-  '77': { nameAr: 'يمن موبايل', code: 'YM', bg: 'bg-rose-500/20', text: 'text-rose-400' },
-  '78': { nameAr: 'يمن موبايل', code: 'YM', bg: 'bg-rose-500/20', text: 'text-rose-400' },
-  '73': { nameAr: 'يو للاتصالات', code: 'YOU', bg: 'bg-amber-500/20', text: 'text-amber-400' },
-  '71': { nameAr: 'سبأفون', code: 'SABAFON', bg: 'bg-blue-500/20', text: 'text-blue-400' },
-  '70': { nameAr: 'واي', code: 'Y', bg: 'bg-emerald-500/20', text: 'text-emerald-400' }
-};
-
+// Default seed data for offline/fallback stability
 const DEFAULT_PLANS: ProtectionPlan[] = [
   { id: 'p1', company_id: '4262d66c-f6b2-437b-9f45-02123e2306d4', name_ar: 'باقة الحماية الشهرية — يمن موبايل', price: 2500, currency: 'YER', duration_days: 30, is_active: true, is_visible: true },
   { id: 'p2', company_id: '4262d66c-f6b2-437b-9f45-02123e2306d4', name_ar: 'باقة الحماية الربع سنوية — يمن موبايل', price: 7000, currency: 'YER', duration_days: 90, is_active: true, is_visible: true },
@@ -185,104 +108,82 @@ const DEFAULT_PLANS: ProtectionPlan[] = [
 ];
 
 const DEFAULT_PAYMENT_METHODS: PaymentMethod[] = [
-  { id: 'pm1', name_ar: 'بنك الكريمي للتمويل الأصغر الإسلامي', code: 'KURAIMI', account_name: 'خدمة أمان لحماية الأرقام', account_identifier: '300123456', instructions: 'إيداع أو تحويل لحساب أمان عبر تطبيق كريمي جوال أو أقرب فرع.', display_order: 1 },
-  { id: 'pm2', name_ar: 'بنك القطيبي الإسلامي للتمويل الأصغر', code: 'QUTAIBI', account_name: 'أمان لخدمات الاتصالات', account_identifier: '120889900', instructions: 'تحويل عبر تطبيق قطيبي لحظات متاح 24/7.', display_order: 2 },
-  { id: 'pm3', name_ar: 'محفظة ون كاش (OneCash)', code: 'ONECASH', account_name: 'محفظة أمان الرسمية', account_identifier: '770001122', instructions: 'تحويل مباشر من محفظتك إلى رقم محفظة الخدمة.', display_order: 3 },
-  { id: 'pm4', name_ar: 'محفظة جوالي (Jawwali)', code: 'JAWWALI', account_name: 'إدارة أمان لحماية الأرقام', account_identifier: '730002233', instructions: 'تحويل سريع عبر تطبيق جوالي التابع لبنك اليمن والكويت.', display_order: 4 }
+  { id: 'pm1', name_ar: 'بنك الكريمي للتمويل الأصغر الإسلامي', code: 'KURAIMI', account_name: 'خدمة أمان لحماية الأرقام', account_identifier: '300123456', instructions: 'إيداع أو تحويل لحساب أمان عبر تطبيق كريمي جوال أو أقرب فرع.', display_order: 1, is_active: true },
+  { id: 'pm2', name_ar: 'بنك القطيبي الإسلامي للتمويل الأصغر', code: 'QUTAIBI', account_name: 'أمان لخدمات الاتصالات', account_identifier: '120889900', instructions: 'تحويل عبر تطبيق قطيبي لحظات متاح 24/7.', display_order: 2, is_active: true },
+  { id: 'pm3', name_ar: 'محفظة ون كاش (OneCash)', code: 'ONECASH', account_name: 'محفظة أمان الرسمية', account_identifier: '770001122', instructions: 'تحويل مباشر من محفظتك إلى رقم محفظة الخدمة.', display_order: 3, is_active: true },
+  { id: 'pm4', name_ar: 'محفظة جوالي (Jawwali)', code: 'JAWWALI', account_name: 'إدارة أمان لحماية الأرقام', account_identifier: '730002233', instructions: 'تحويل سريع عبر تطبيق جوالي التابع لبنك اليمن والكويت.', display_order: 4, is_active: true }
 ];
 
-// Helper: Resolve Task Status (UPCOMING → DUE_SOON → DUE → OVERDUE → COMPLETED / CANCELLED)
-function resolveTaskStatus(status: string, dueAtStr: string) {
-  if (status === 'completed') return { code: 'COMPLETED', label: 'مكتملة', bg: 'bg-emerald-500/20', text: 'text-emerald-400' };
-  if (status === 'cancelled') return { code: 'CANCELLED', label: 'ملغاة', bg: 'bg-slate-500/20', text: 'text-slate-400' };
+const DEFAULT_PROVIDERS: TelecomProvider[] = [
+  { id: '4262d66c-f6b2-437b-9f45-02123e2306d4', name_ar: 'يمن موبايل', code: 'YM', display_order: 1, is_active: true, prefixes: ['77', '78'] },
+  { id: '193c9f07-2781-44e0-96f6-eead97fca93a', name_ar: 'يو للاتصالات', code: 'YOU', display_order: 2, is_active: true, prefixes: ['73'] },
+  { id: 'cdeb5fe5-4733-4732-b678-9dd101f11d88', name_ar: 'سبأفون', code: 'SABAFON', display_order: 3, is_active: true, prefixes: ['71'] },
+  { id: '69a82a6d-345f-44a1-b46a-33e8098b8c64', name_ar: 'واي للاتصالات', code: 'Y', display_order: 4, is_active: true, prefixes: ['70'] }
+];
 
-  const now = new Date().getTime();
-  const due = new Date(dueAtStr).getTime();
-  const diffHours = (due - now) / (1000 * 3600);
-
-  if (diffHours < 0) {
-    return { code: 'OVERDUE', label: 'متأخرة', bg: 'bg-red-500/20', text: 'text-red-400' };
-  } else if (diffHours <= 24) {
-    return { code: 'DUE', label: 'مستحقة الآن', bg: 'bg-amber-500/20', text: 'text-amber-400' };
-  } else if (diffHours <= 72) {
-    return { code: 'DUE_SOON', label: 'مستحقة قريباً', bg: 'bg-yellow-500/20', text: 'text-yellow-400' };
-  }
-  return { code: 'UPCOMING', label: 'قادمة / مجدولة', bg: 'bg-sky-500/20', text: 'text-sky-400' };
-}
-
-// Helper: Calculate Renewal Health (🟢 آمن → 🟡 قريب → 🔴 خطر → ⚫ منتهي)
-function calculateRenewalHealth(endAtStr: string) {
-  if (!endAtStr) return { health: 'EXPIRED', symbol: '⚫', label: 'منتهي', days: 0, color: 'text-slate-400', bg: 'bg-slate-800' };
-  const now = new Date().getTime();
-  const end = new Date(endAtStr).getTime();
-  const days = Math.ceil((end - now) / (1000 * 86400));
-
-  if (days <= 0) {
-    return { health: 'EXPIRED', symbol: '⚫', label: 'منتهي', days: 0, color: 'text-slate-400', bg: 'bg-slate-800' };
-  } else if (days < 7) {
-    return { health: 'DANGER', symbol: '🔴', label: 'خطر', days, color: 'text-red-400', bg: 'bg-red-950/60' };
-  } else if (days <= 14) {
-    return { health: 'SOON', symbol: '🟡', label: 'قريب', days, color: 'text-amber-400', bg: 'bg-amber-950/60' };
-  }
-  return { health: 'SAFE', symbol: '🟢', label: 'آمن', days, color: 'text-emerald-400', bg: 'bg-emerald-950/60' };
-}
+const DEFAULT_PREFIXES: TelecomProviderPrefix[] = [
+  { id: 'px1', company_id: '4262d66c-f6b2-437b-9f45-02123e2306d4', prefix: '77', number_length: 9, is_active: true },
+  { id: 'px2', company_id: '4262d66c-f6b2-437b-9f45-02123e2306d4', prefix: '78', number_length: 9, is_active: true },
+  { id: 'px3', company_id: '193c9f07-2781-44e0-96f6-eead97fca93a', prefix: '73', number_length: 9, is_active: true },
+  { id: 'px4', company_id: 'cdeb5fe5-4733-4732-b678-9dd101f11d88', prefix: '71', number_length: 9, is_active: true },
+  { id: 'px5', company_id: '69a82a6d-345f-44a1-b46a-33e8098b8c64', prefix: '70', number_length: 9, is_active: true }
+];
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'device' | 'architecture' | 'logs'>('device');
+  const [activeTab, setActiveTab] = useState<'device' | 'screens' | 'architecture'>('device');
 
-  // Customer State
-  const [customerNavTab, setCustomerNavTab] = useState<'numbers' | 'protections' | 'plans' | 'payments' | 'notifications'>('numbers');
+  // Navigation
+  const [authView, setAuthView] = useState<'login' | 'signup' | 'forgot_password'>('login');
+  const [customerTab, setCustomerTab] = useState<'home' | 'numbers' | 'requests' | 'protections' | 'notifications' | 'account'>('home');
+  const [adminTab, setAdminTab] = useState<
+    | 'dashboard'
+    | 'customers'
+    | 'numbers'
+    | 'requests'
+    | 'protections'
+    | 'tasks'
+    | 'providers'
+    | 'payment_methods'
+    | 'notifications'
+    | 'audit'
+    | 'settings'
+  >('dashboard');
+
+  // Direct Screen Jump Selector for prompt verification
+  const [screenJump, setScreenJump] = useState<number | null>(null);
+
+  // Data Store
   const [numbers, setNumbers] = useState<CustomerNumberItem[]>([]);
-  const [plans, setPlans] = useState<ProtectionPlan[]>(DEFAULT_PLANS);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(DEFAULT_PAYMENT_METHODS);
   const [requests, setRequests] = useState<ProtectionRequestItem[]>([]);
   const [protections, setProtections] = useState<ProtectionItem[]>([]);
   const [clientNotifications, setClientNotifications] = useState<NotificationItem[]>([]);
+  const [plans, setPlans] = useState<ProtectionPlan[]>(DEFAULT_PLANS);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(DEFAULT_PAYMENT_METHODS);
 
-  // Stage 4: Tasks
-  const [adminTasks, setAdminTasks] = useState<PaymentTaskItem[]>([]);
-  const [taskFilter, setTaskFilter] = useState<'all' | 'due' | 'overdue' | 'upcoming' | 'completed'>('all');
-  const [taskSearch, setTaskSearch] = useState('');
-  const [executingTask, setExecutingTask] = useState<PaymentTaskItem | null>(null);
-  const [executionNote, setExecutionNote] = useState('');
-  const [reschedulingTask, setReschedulingTask] = useState<PaymentTaskItem | null>(null);
-  const [rescheduleDate, setRescheduleDate] = useState('');
-  const [rescheduleReason, setRescheduleReason] = useState('');
-
-  // Add Number
-  const [isAddingNumber, setIsAddingNumber] = useState(false);
-  const [phoneInput, setPhoneInput] = useState('');
-  const [detectedOp, setDetectedOp] = useState<any>(null);
-
-  // Create Request Modal
-  const [showRequestModal, setShowRequestModal] = useState(false);
-  const [targetNumber, setTargetNumber] = useState<CustomerNumberItem | null>(null);
-  const [selectedPlanId, setSelectedPlanId] = useState('');
-  const [selectedPmId, setSelectedPmId] = useState('');
-  const [transferRef, setTransferRef] = useState('');
-  const [customerNote, setCustomerNote] = useState('');
-  const [conflictWarning, setConflictWarning] = useState<string | null>(null);
-
-  // Admin View State
-  const [adminViewMode, setAdminViewMode] = useState<'customer' | 'admin'>('customer');
-  const [adminNavTab, setAdminNavTab] = useState<'requests' | 'tasks' | 'notifications'>('requests');
-  const [pendingRequestsAdmin, setPendingRequestsAdmin] = useState<ProtectionRequestItem[]>([]);
+  // Admin Data Store
+  const [adminCustomers, setAdminCustomers] = useState<UserProfile[]>([]);
+  const [allNumbersAdmin, setAllNumbersAdmin] = useState<CustomerNumberItem[]>([]);
+  const [allRequestsAdmin, setAllRequestsAdmin] = useState<ProtectionRequestItem[]>([]);
+  const [allProtectionsAdmin, setAllProtectionsAdmin] = useState<ProtectionItem[]>([]);
+  const [allTasksAdmin, setAllTasksAdmin] = useState<PaymentTaskItem[]>([]);
   const [adminNotifications, setAdminNotifications] = useState<NotificationItem[]>([]);
-  const [rejectModalReq, setRejectModalReq] = useState<ProtectionRequestItem | null>(null);
-  const [rejectionReason, setRejectionReason] = useState('');
+  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
+  const [providers, setProviders] = useState<TelecomProvider[]>(DEFAULT_PROVIDERS);
+  const [prefixes, setPrefixes] = useState<TelecomProviderPrefix[]>(DEFAULT_PREFIXES);
+  const [taskSettings, setTaskSettings] = useState<CompanyTaskSettingItem[]>([]);
+  const [systemSettings, setSystemSettings] = useState<SystemSettingItem[]>([]);
 
-  // General Feedback
+  // Modals / deep link navigation
+  const [preselectedNumberForRequest, setPreselectedNumberForRequest] = useState<string | null>(null);
+
+  // Feedback toast
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [authInitialError, setAuthInitialError] = useState<string | null>(null);
 
-  // Navigation Route State
-  const [currentRoute, setCurrentRoute] = useState<'/auth' | '/customer/home' | '/admin/home'>('/auth');
-  const [authError, setAuthError] = useState<string | null>(null);
-
+  // Lifecycle & Session restoration
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -290,7 +191,6 @@ export default function App() {
         fetchUserProfile(session.user.id);
       } else {
         setProfile(null);
-        setCurrentRoute('/auth');
         setLoading(false);
       }
     });
@@ -301,7 +201,6 @@ export default function App() {
       setSession(session);
       if (event === 'SIGNED_OUT' || !session?.user) {
         setProfile(null);
-        setCurrentRoute('/auth');
         setLoading(false);
       } else if (session?.user) {
         fetchUserProfile(session.user.id);
@@ -322,102 +221,55 @@ export default function App() {
       if (!error && data) {
         const userRec = data as UserProfile;
 
-        // Check account deletion
-        if (userRec.is_deleted) {
+        // Check if account status is invalid or suspended
+        if (userRec.is_deleted || userRec.status === 'suspended' || userRec.status === 'disabled') {
+          const statusMsg = userRec.status === 'suspended'
+            ? 'الحساب معطل أو موقوف، يرجى مراجعة الإدارة'
+            : userRec.status === 'disabled'
+            ? 'تم تعطيل هذا الحساب نهائياً، يرجى التواصل مع الإدارة'
+            : 'هذا الحساب تم حذفه من النظام، يرجى التواصل مع الإدارة';
+
           await supabase.auth.signOut();
           setSession(null);
           setProfile(null);
-          setCurrentRoute('/auth');
-          setAuthError('هذا الحساب تم حذفه من النظام، يرجى التواصل مع الإدارة.');
+          setAuthInitialError(statusMsg);
+          setFeedback({
+            type: 'error',
+            message: statusMsg
+          });
           return;
         }
 
-        // Check account suspension
-        if (userRec.status === 'suspended') {
+        if (userRec.user_type !== 'admin' && userRec.user_type !== 'customer') {
           await supabase.auth.signOut();
           setSession(null);
           setProfile(null);
-          setCurrentRoute('/auth');
-          setAuthError('الحساب معطل أو موقوف، يرجى مراجعة الإدارة');
+          setAuthInitialError('نوع الحساب غير صالح، لا يمكن تحديد مسار الوصول');
           return;
         }
 
-        // Check account disabled
-        if (userRec.status === 'disabled') {
-          await supabase.auth.signOut();
-          setSession(null);
-          setProfile(null);
-          setCurrentRoute('/auth');
-          setAuthError('تم تعطيل هذا الحساب نهائياً، يرجى التواصل مع الإدارة.');
-          return;
-        }
-
-        // Must be active
-        if (userRec.status !== 'active') {
-          await supabase.auth.signOut();
-          setSession(null);
-          setProfile(null);
-          setCurrentRoute('/auth');
-          setAuthError('حالة الحساب لا تسمح بالدخول، يرجى مراجعة إدارة النظام.');
-          return;
-        }
-
-        // Validate user_type
-        if (userRec.user_type !== 'customer' && userRec.user_type !== 'admin') {
-          await supabase.auth.signOut();
-          setSession(null);
-          setProfile(null);
-          setCurrentRoute('/auth');
-          setAuthError('نوع الحساب غير صالح أو غير معتمد في النظام.');
-          return;
-        }
-
+        setAuthInitialError(null);
         setProfile(userRec);
-        setAuthError(null);
-
+        loadCustomerData(userId);
         if (userRec.user_type === 'admin') {
-          setAdminViewMode('admin');
-          setCurrentRoute('/admin/home');
-        } else {
-          setAdminViewMode('customer');
-          setCurrentRoute('/customer/home');
+          loadAdminData();
         }
-
-        loadAllData(userId);
       } else {
-        // Missing record in public.users - do NOT create mock profile or grant access!
         await supabase.auth.signOut();
         setSession(null);
         setProfile(null);
-        setCurrentRoute('/auth');
-        setAuthError('لم يتم العثور على سجل مستخدم مطابق في النظام. يرجى مراجعة الدعم الفني.');
+        setAuthInitialError('لم يتم العثور على بيانات المستخدم في النظام');
       }
     } catch {
-      await supabase.auth.signOut();
-      setSession(null);
-      setProfile(null);
-      setCurrentRoute('/auth');
-      setAuthError('تعذر التحقق من ملف تعريف المستخدم. يرجى إعادة المحاولة.');
+      // ignore
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLoginSuccess = (userProf: UserProfile, targetRoute: '/customer/home' | '/admin/home') => {
-    setProfile(userProf);
-    setCurrentRoute(targetRoute);
-    if (userProf.user_type === 'admin') {
-      setAdminViewMode('admin');
-    } else {
-      setAdminViewMode('customer');
-    }
-    setAuthError(null);
-    loadAllData(userProf.id);
-  };
-
-  const loadAllData = async (userId: string) => {
-    // 1. Numbers
+  const loadCustomerData = async (userId: string) => {
     try {
+      // 1. Customer Numbers
       const { data: numData } = await supabase
         .from('customer_numbers')
         .select('*')
@@ -425,326 +277,199 @@ export default function App() {
         .eq('is_deleted', false)
         .order('created_at', { ascending: false });
 
-      if (numData) {
-        const enriched = numData.map((item: any) => ({
-          ...item,
-          company_name_ar: KNOWN_OPERATORS[item.detected_prefix]?.nameAr || `بادئة ${item.detected_prefix}`,
-          company_code: KNOWN_OPERATORS[item.detected_prefix]?.code || 'OP'
-        }));
-        setNumbers(enriched);
-      }
-    } catch {}
+      if (numData) setNumbers(numData as CustomerNumberItem[]);
 
-    // 2. Plans & Payment Methods
-    try {
-      const { data: planData } = await supabase
-        .from('company_packages')
-        .select('*')
-        .eq('is_active', true)
-        .eq('is_visible', true)
-        .eq('is_deleted', false);
-      if (planData && planData.length) setPlans(planData);
-    } catch {}
-
-    try {
-      const { data: pmData } = await supabase
-        .from('payment_methods')
-        .select('*')
-        .eq('is_active', true)
-        .eq('is_deleted', false)
-        .order('display_order', { ascending: true });
-      if (pmData && pmData.length) setPaymentMethods(pmData);
-    } catch {}
-
-    // 3. Protection Requests
-    try {
+      // 2. Customer Requests
       const { data: reqData } = await supabase
         .from('protection_requests')
         .select('*')
         .eq('customer_id', userId)
         .order('created_at', { ascending: false });
-      if (reqData) setRequests(reqData);
-    } catch {}
 
-    // 4. Protections
-    try {
+      if (reqData) {
+        const enrichedReqs = (reqData as any[]).map((r) => {
+          const matchedNum = (numData || []).find((n: any) => n.id === r.customer_number_id);
+          const matchedPlan = plans.find((p) => p.id === r.package_id);
+          const matchedPm = paymentMethods.find((pm) => pm.id === r.payment_method_id);
+          return {
+            ...r,
+            phone_number: matchedNum?.phone_number,
+            package_name: matchedPlan?.name_ar,
+            payment_method_name: matchedPm?.name_ar
+          };
+        });
+        setRequests(enrichedReqs);
+      }
+
+      // 3. Customer Protections
       const { data: protData } = await supabase
         .from('protections')
         .select('*')
         .eq('customer_id', userId)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false });
-      if (protData) setProtections(protData);
-    } catch {}
 
-    // 5. Notifications
-    try {
+      if (protData) {
+        const enrichedProts = (protData as any[]).map((p) => {
+          const matchedNum = (numData || []).find((n: any) => n.id === p.customer_number_id);
+          return {
+            ...p,
+            phone_number: matchedNum?.phone_number
+          };
+        });
+        setProtections(enrichedProts);
+      }
+
+      // 4. Customer Notifications
       const { data: notifData } = await supabase
         .from('client_notifications')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
-      if (notifData) setClientNotifications(notifData);
-    } catch {}
 
-    // 6. Admin Data
+      if (notifData) setClientNotifications(notifData as NotificationItem[]);
+
+      // 5. Payment Methods
+      const { data: pmData } = await supabase
+        .from('payment_methods')
+        .select('*')
+        .eq('is_active', true)
+        .eq('is_deleted', false)
+        .order('display_order', { ascending: true });
+
+      if (pmData && pmData.length > 0) setPaymentMethods(pmData as PaymentMethod[]);
+
+      // 6. Packages
+      const { data: pkgData } = await supabase
+        .from('company_packages')
+        .select('*')
+        .eq('is_active', true)
+        .eq('is_visible', true)
+        .eq('is_deleted', false);
+
+      if (pkgData && pkgData.length > 0) setPlans(pkgData as ProtectionPlan[]);
+    } catch {
+      // ignore
+    }
+  };
+
+  const loadAdminData = async () => {
     try {
-      const { data: adminReqs } = await supabase
+      // 1. Users
+      const { data: userData } = await supabase
+        .from('users')
+        .select('*')
+        .eq('user_type', 'customer')
+        .order('created_at', { ascending: false });
+      if (userData) setAdminCustomers(userData as UserProfile[]);
+
+      // 2. All Numbers
+      const { data: numData } = await supabase
+        .from('customer_numbers')
+        .select('*')
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false });
+      if (numData) setAllNumbersAdmin(numData as CustomerNumberItem[]);
+
+      // 3. All Requests
+      const { data: reqData } = await supabase
         .from('protection_requests')
         .select('*')
-        .eq('status', 'pending')
         .order('created_at', { ascending: false });
-      if (adminReqs) setPendingRequestsAdmin(adminReqs);
-    } catch {}
+      if (reqData) {
+        const enriched = (reqData as any[]).map((r) => {
+          const num = (numData || []).find((n: any) => n.id === r.customer_number_id);
+          const matchedPlan = plans.find((p) => p.id === r.package_id);
+          const matchedPm = paymentMethods.find((pm) => pm.id === r.payment_method_id);
+          return {
+            ...r,
+            phone_number: num?.phone_number,
+            package_name: matchedPlan?.name_ar,
+            payment_method_name: matchedPm?.name_ar
+          };
+        });
+        setAllRequestsAdmin(enriched);
+      }
 
-    try {
-      const { data: tasksData } = await supabase
+      // 4. All Protections
+      const { data: protData } = await supabase
+        .from('protections')
+        .select('*')
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false });
+      if (protData) {
+        const enriched = (protData as any[]).map((p) => {
+          const num = (numData || []).find((n: any) => n.id === p.customer_number_id);
+          return {
+            ...p,
+            phone_number: num?.phone_number
+          };
+        });
+        setAllProtectionsAdmin(enriched);
+      }
+
+      // 5. Payment Tasks
+      const { data: taskData } = await supabase
         .from('protection_tasks')
         .select('*')
         .order('due_at', { ascending: true });
-      if (tasksData) setAdminTasks(tasksData);
-    } catch {}
+      if (taskData) {
+        const enriched = (taskData as any[]).map((t) => {
+          const num = (numData || []).find((n: any) => n.id === t.customer_number_id);
+          return {
+            ...t,
+            phone_number: num?.phone_number
+          };
+        });
+        setAllTasksAdmin(enriched);
+      }
 
-    try {
-      const { data: aNotifData } = await supabase
+      // 6. Admin Notifications
+      const { data: notifData } = await supabase
         .from('admin_notifications')
         .select('*')
         .order('created_at', { ascending: false });
-      if (aNotifData) setAdminNotifications(aNotifData);
-    } catch {}
-  };
+      if (notifData) setAdminNotifications(notifData as NotificationItem[]);
 
-  // Real-time phone detection (Stage 2)
-  const handlePhoneInputChange = (raw: string) => {
-    const digits = raw.replace(/\D/g, '');
-    if (digits.length > 9) return;
-    setPhoneInput(digits);
-    if (digits.length >= 2) {
-      const prefix = digits.substring(0, 2);
-      const known = KNOWN_OPERATORS[prefix];
-      if (known) {
-        const isValid = digits.length === 9;
-        setDetectedOp({ prefix, nameAr: known.nameAr, code: known.code, isValid });
-      } else {
-        setDetectedOp({ prefix, nameAr: 'غير مدعوم', code: 'UNKNOWN', isValid: false });
-      }
-    } else {
-      setDetectedOp(null);
+      // 7. Audit Logs
+      const { data: auditData } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (auditData) setAuditLogs(auditData as AuditLogItem[]);
+
+      // 8. Companies
+      const { data: compData } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('is_deleted', false)
+        .order('display_order', { ascending: true });
+      if (compData && compData.length > 0) setProviders(compData as TelecomProvider[]);
+
+      // 9. Prefixes
+      const { data: prefixData } = await supabase
+        .from('company_prefixes')
+        .select('*')
+        .eq('is_deleted', false);
+      if (prefixData && prefixData.length > 0) setPrefixes(prefixData as TelecomProviderPrefix[]);
+
+      // 10. Task Settings
+      const { data: tsData } = await supabase
+        .from('company_task_settings')
+        .select('*');
+      if (tsData) setTaskSettings(tsData as CompanyTaskSettingItem[]);
+
+      // 11. System Settings
+      const { data: sysData } = await supabase
+        .from('system_settings')
+        .select('*');
+      if (sysData) setSystemSettings(sysData as SystemSettingItem[]);
+    } catch {
+      // ignore
     }
   };
 
-  const handleAddNumber = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!detectedOp?.isValid) return;
-    setActionLoading(true);
-    try {
-      const { data, error } = await supabase.rpc('rpc_add_customer_number', {
-        p_phone_number: phoneInput
-      });
-      if (error) throw error;
-      const res = data as any;
-      if (res?.success) {
-        setFeedback({ type: 'success', message: 'تم حفظ الرقم بنجاح دون إنشاء حماية تلقائياً.' });
-        setPhoneInput('');
-        setDetectedOp(null);
-        setIsAddingNumber(false);
-        if (session?.user) loadAllData(session.user.id);
-      } else {
-        setFeedback({ type: 'error', message: res?.message || res?.error_code || 'تعذر إضافة الرقم' });
-      }
-    } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || 'حدث خطأ' });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Open Request Modal with Conflict Verification
-  const openCreateRequestModal = (num: CustomerNumberItem) => {
-    setTargetNumber(num);
-    const hasActive = protections.some((p) => p.customer_number_id === num.id && p.status === 'active');
-    const hasPending = requests.some((r) => r.customer_number_id === num.id && r.status === 'pending');
-
-    if (hasActive) {
-      setConflictWarning('هذا الرقم محمي بالفعل بحماية نشطة ولا يحتاج لطلب حماية جديد.');
-    } else if (hasPending) {
-      setConflictWarning('يوجد طلب حماية قيد المراجعة (PENDING) لهذا الرقم حالياً.');
-    } else {
-      setConflictWarning(null);
-    }
-
-    const matchingPlans = plans.filter((p) => p.company_id === num.company_id);
-    setSelectedPlanId(matchingPlans[0]?.id || plans[0]?.id || '');
-    setSelectedPmId(paymentMethods[0]?.id || '');
-    setTransferRef('');
-    setCustomerNote('');
-    setShowRequestModal(true);
-  };
-
-  // Submit Protection Request via RPC
-  const handleSubmitProtectionRequest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!targetNumber || !selectedPlanId || !selectedPmId || !transferRef.trim()) return;
-
-    setActionLoading(true);
-    try {
-      const { data, error } = await supabase.rpc('rpc_create_protection_request', {
-        p_customer_number_id: targetNumber.id,
-        p_package_id: selectedPlanId,
-        p_payment_method_id: selectedPmId,
-        p_transfer_reference: transferRef.trim(),
-        p_customer_note: customerNote.trim() || null
-      });
-
-      if (error) throw error;
-      const res = data as any;
-      if (res?.success) {
-        setFeedback({
-          type: 'success',
-          message: 'تم إرسال طلب الحماية بنجاح بحالة (PENDING) وإشعار الإدارة لمراجعة التحويل.'
-        });
-        setShowRequestModal(false);
-        setCustomerNavTab('protections');
-        if (session?.user) loadAllData(session.user.id);
-      } else {
-        setFeedback({ type: 'error', message: res?.message || res?.error_code || 'فشل تقديم الطلب' });
-      }
-    } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || 'حدث خطأ أثناء تقديم الطلب' });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Admin Approve Request
-  const handleApproveRequest = async (reqId: string) => {
-    setActionLoading(true);
-    try {
-      const { data, error } = await supabase.rpc('rpc_approve_protection_request', {
-        p_request_id: reqId
-      });
-      if (error) throw error;
-      const res = data as any;
-      if (res?.success) {
-        setFeedback({
-          type: 'success',
-          message: 'تم اعتماد الطلب بنجاح، وتفعيل الحماية، وإنشاء المهمة التشغيلية الأولى تلقائياً.'
-        });
-        if (session?.user) loadAllData(session.user.id);
-      } else {
-        setFeedback({ type: 'error', message: res?.message || res?.error_code || 'فشل الاعتماد' });
-      }
-    } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || 'حدث خطأ أثناء الاعتماد' });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Admin Reject Request
-  const handleRejectRequest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!rejectModalReq || !rejectionReason.trim()) return;
-
-    setActionLoading(true);
-    try {
-      const { data, error } = await supabase.rpc('rpc_reject_protection_request', {
-        p_request_id: rejectModalReq.id,
-        p_rejection_reason: rejectionReason.trim()
-      });
-      if (error) throw error;
-      const res = data as any;
-      if (res?.success) {
-        setFeedback({ type: 'success', message: 'تم رفض الطلب وتوثيق السبب وإشعار العميل.' });
-        setRejectModalReq(null);
-        setRejectionReason('');
-        if (session?.user) loadAllData(session.user.id);
-      } else {
-        setFeedback({ type: 'error', message: res?.message || res?.error_code || 'فشل الرفض' });
-      }
-    } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || 'حدث خطأ أثناء الرفض' });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Stage 4: Admin Execute Task
-  const handleExecuteTask = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!executingTask) return;
-    setActionLoading(true);
-    try {
-      const { data, error } = await supabase.rpc('rpc_execute_task', {
-        p_task_id: executingTask.id,
-        p_execution_note: executionNote.trim() || null
-      });
-      if (error) throw error;
-      const res = data as any;
-      if (res?.success) {
-        setFeedback({
-          type: 'success',
-          message: 'تم تنفيذ المهمة التشغيلية بنجاح، وتسجيل القيد المالي، وإنشاء المهمة الدورية التالية.'
-        });
-        setExecutingTask(null);
-        setExecutionNote('');
-        if (session?.user) loadAllData(session.user.id);
-      } else {
-        setFeedback({ type: 'error', message: res?.error_code || 'تعذر تنفيذ المهمة' });
-      }
-    } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || 'حدث خطأ أثناء التنفيذ' });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Stage 4: Admin Reschedule Task
-  const handleRescheduleTask = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!reschedulingTask || !rescheduleDate) return;
-    setActionLoading(true);
-    try {
-      const { data, error } = await supabase.rpc('rpc_reschedule_task', {
-        p_task_id: reschedulingTask.id,
-        p_new_scheduled_at: new Date(rescheduleDate).toISOString(),
-        p_reason: rescheduleReason.trim() || null
-      });
-      if (error) throw error;
-      const res = data as any;
-      if (res?.success) {
-        setFeedback({
-          type: 'success',
-          message: 'تمت إعادة جدولة المهمة وتحديث الخطط المستقبلية وتوثيق السجل بنجاح.'
-        });
-        setReschedulingTask(null);
-        setRescheduleDate('');
-        setRescheduleReason('');
-        if (session?.user) loadAllData(session.user.id);
-      } else {
-        setFeedback({ type: 'error', message: res?.error_code || 'تعذر إعادة الجدولة' });
-      }
-    } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || 'حدث خطأ أثناء إعادة الجدولة' });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Stage 4: Mark Notification Read
-  const handleMarkNotificationRead = async (notifId: string, isAdmin: boolean) => {
-    try {
-      const rpcName = isAdmin ? 'rpc_mark_admin_notification_read' : 'rpc_mark_notification_read';
-      await supabase.rpc(rpcName, { p_notification_id: notifId });
-      if (isAdmin) {
-        setAdminNotifications((prev) => prev.map((n) => (n.id === notifId ? { ...n, is_read: true } : n)));
-      } else {
-        setClientNotifications((prev) => prev.map((n) => (n.id === notifId ? { ...n, is_read: true } : n)));
-      }
-    } catch {}
-  };
-
-  // Sign Out Handler
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
@@ -753,178 +478,165 @@ export default function App() {
     } finally {
       setSession(null);
       setProfile(null);
-      setCurrentRoute('/auth');
+      setAuthView('login');
+      setCustomerTab('home');
+      setAdminTab('dashboard');
       setNumbers([]);
       setRequests([]);
       setProtections([]);
-      setPendingRequestsAdmin([]);
-      setAdminTasks([]);
-      setAdminNotifications([]);
       setClientNotifications([]);
-      setAuthError(null);
       setFeedback({ type: 'success', message: 'تم تسجيل الخروج بنجاح من النظام' });
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(text);
-    setTimeout(() => setCopiedId(null), 2000);
+  const handleLoginSuccess = (userProf: UserProfile, targetRoute: '/customer/home' | '/admin/home') => {
+    setProfile(userProf);
+    if (userProf.user_type === 'admin') {
+      setAdminTab('dashboard');
+      loadAdminData();
+    } else {
+      setCustomerTab('home');
+      loadCustomerData(userProf.id);
+    }
   };
 
-  // Filter tasks
-  const filteredTasks = adminTasks.filter((t) => {
-    const statusObj = resolveTaskStatus(t.status, t.due_at);
-    if (taskFilter === 'due' && statusObj.code !== 'DUE' && statusObj.code !== 'DUE_SOON') return false;
-    if (taskFilter === 'overdue' && statusObj.code !== 'OVERDUE') return false;
-    if (taskFilter === 'upcoming' && statusObj.code !== 'UPCOMING') return false;
-    if (taskFilter === 'completed' && statusObj.code !== 'COMPLETED') return false;
-
-    if (taskSearch.trim()) {
-      const q = taskSearch.trim().toLowerCase();
-      const matchPhone = t.phone_number?.toLowerCase().includes(q);
-      const matchComp = t.company_name?.toLowerCase().includes(q);
-      const matchNum = t.task_number.toString() === q;
-      if (!matchPhone && !matchComp && !matchNum) return false;
-    }
-    return true;
-  });
+  // 21 Screen Navigator Map
+  const SCREEN_LIST = [
+    { id: 1, name: 'SCREEN 01 — تسجيل الدخول (Login)', type: 'auth', view: 'login' },
+    { id: 2, name: 'SCREEN 02 — إنشاء حساب جديد (Sign Up)', type: 'auth', view: 'signup' },
+    { id: 3, name: 'SCREEN 03 — استعادة كلمة المرور (Recovery)', type: 'auth', view: 'forgot_password' },
+    { id: 4, name: 'SCREEN 04 — تغيير كلمة المرور (Change Pass)', type: 'customer', tab: 'account' },
+    { id: 5, name: 'SCREEN 05 — الرئيسية للعميل (Customer Home)', type: 'customer', tab: 'home' },
+    { id: 6, name: 'SCREEN 06 — أرقامي المسجلة (Customer Numbers)', type: 'customer', tab: 'numbers' },
+    { id: 7, name: 'SCREEN 07 — طلبات الحماية (Protection Requests)', type: 'customer', tab: 'requests' },
+    { id: 8, name: 'SCREEN 08 — حماياتي (Protections)', type: 'customer', tab: 'protections' },
+    { id: 9, name: 'SCREEN 09 — إشعارات العميل (Notifications)', type: 'customer', tab: 'notifications' },
+    { id: 10, name: 'SCREEN 10 — حسابي (Customer Account)', type: 'customer', tab: 'account' },
+    { id: 11, name: 'SCREEN 11 — لوحة تحكم الإدارة (Admin Dashboard)', type: 'admin', tab: 'dashboard' },
+    { id: 12, name: 'SCREEN 12 — إدارة العملاء (Admin Customers)', type: 'admin', tab: 'customers' },
+    { id: 13, name: 'SCREEN 13 — أرقام المشتركين (Admin Numbers)', type: 'admin', tab: 'numbers' },
+    { id: 14, name: 'SCREEN 14 — مراجعة الطلبات (Admin Requests)', type: 'admin', tab: 'requests' },
+    { id: 15, name: 'SCREEN 15 — إدارة الحمايات (Admin Protections)', type: 'admin', tab: 'protections' },
+    { id: 16, name: 'SCREEN 16 — المهام التشغيلية (Payment Tasks)', type: 'admin', tab: 'tasks' },
+    { id: 17, name: 'SCREEN 17 — مشغلو الاتصالات (Telecom Providers)', type: 'admin', tab: 'providers' },
+    { id: 18, name: 'SCREEN 18 — وسائل الدفع (Payment Methods)', type: 'admin', tab: 'payment_methods' },
+    { id: 19, name: 'SCREEN 19 — إشعارات الإدارة (Admin Notifications)', type: 'admin', tab: 'notifications' },
+    { id: 20, name: 'SCREEN 20 — سجل التدقيق (Audit Log)', type: 'admin', tab: 'audit' },
+    { id: 21, name: 'SCREEN 21 — إعدادات النظام والمهام (System Settings)', type: 'admin', tab: 'settings' }
+  ];
 
   return (
-    <div className="flex h-screen w-full bg-slate-950 text-slate-100 font-sans antialiased overflow-hidden dir-rtl" dir="rtl">
-      {/* Sidebar Controls */}
-      <div className="w-80 border-l border-slate-800 bg-slate-900 flex flex-col justify-between p-4 shrink-0">
-        <div>
-          <div className="flex items-center gap-3 pb-4 border-b border-slate-800">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-950">
-              <Shield className="w-6 h-6 text-white" />
+    <div className="flex h-screen w-full bg-slate-950 text-slate-100 font-sans antialiased overflow-hidden select-none" dir="rtl">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Top App Header */}
+        <header className="h-14 border-b border-slate-800 bg-slate-900/80 backdrop-blur-md px-4 flex items-center justify-between z-20 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center shadow-md shadow-emerald-950/60">
+              <Shield className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-base tracking-wide flex items-center gap-2">
-                AMAN.XZ1
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  STAGE 4
-                </span>
-              </h1>
-              <p className="text-xs text-slate-400">نظام حماية أرقام الهواتف المحمولة</p>
-            </div>
-          </div>
-
-          <div className="mt-4 space-y-2">
-            <button
-              onClick={() => setActiveTab('device')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all ${
-                activeTab === 'device' ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 font-medium' : 'text-slate-400 hover:bg-slate-800/60'
-              }`}
-            >
-              <Smartphone className="w-4 h-4" />
-              <span>واجهة محاكي التطبيق (Android)</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('architecture')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all ${
-                activeTab === 'architecture' ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 font-medium' : 'text-slate-400 hover:bg-slate-800/60'
-              }`}
-            >
-              <Database className="w-4 h-4" />
-              <span>مخطط النطاق و RPCs (Stage 4)</span>
-            </button>
-          </div>
-
-          {session && (
-            <div className="mt-6 p-3 rounded-xl bg-slate-850 border border-slate-800 text-xs">
-              <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
-                <span className="text-slate-400">المستخدم الحالي:</span>
-                <span className="font-medium text-slate-200">{profile?.full_name || session.user.email}</span>
-              </div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-slate-400">الصلاحية:</span>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${profile?.user_type === 'admin' ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
-                  {profile?.user_type === 'admin' ? 'مشرف ADMIN' : 'عميل CUSTOMER'}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-white tracking-wide">AMAN — أمان</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  منظومة الحماية الشاملة (21 شاشة)
                 </span>
               </div>
-              {profile?.user_type === 'admin' && (
-                <div className="pt-2 border-t border-slate-800">
-                  <label className="text-[11px] text-slate-400 block mb-1.5 font-medium">عرض واجهة:</label>
-                  <div className="grid grid-cols-2 gap-1.5 p-0.5 bg-slate-900 rounded-lg border border-slate-800">
-                    <button
-                      onClick={() => setAdminViewMode('customer')}
-                      className={`py-1 text-xs rounded transition-all ${adminViewMode === 'customer' ? 'bg-emerald-600 text-white font-semibold shadow' : 'text-slate-400 hover:text-slate-200'}`}
-                    >
-                      بوابة العميل
-                    </button>
-                    <button
-                      onClick={() => setAdminViewMode('admin')}
-                      className={`py-1 text-xs rounded transition-all ${adminViewMode === 'admin' ? 'bg-amber-600 text-white font-semibold shadow' : 'text-slate-400 hover:text-slate-200'}`}
-                    >
-                      بوابة الإدارة
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
-          )}
-        </div>
+          </div>
 
-        <div>
-          {session ? (
-            <button
-              onClick={handleSignOut}
-              className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm text-red-400 bg-red-950/20 border border-red-900/30 hover:bg-red-900/40 transition-all"
+          {/* Top Bar Switchers */}
+          <div className="flex items-center gap-2">
+            {/* Screen Selector Dropdown */}
+            <select
+              value={screenJump || ''}
+              onChange={(e) => {
+                const id = Number(e.target.value);
+                setScreenJump(id);
+                const target = SCREEN_LIST.find((s) => s.id === id);
+                if (target) {
+                  if (target.type === 'auth') {
+                    setAuthView(target.view as any);
+                  } else if (target.type === 'customer') {
+                    setCustomerTab(target.tab as any);
+                  } else if (target.type === 'admin') {
+                    setAdminTab(target.tab as any);
+                  }
+                }
+              }}
+              className="bg-slate-950 border border-slate-700/80 rounded-xl px-2.5 py-1 text-xs text-emerald-300 font-medium focus:outline-none"
             >
-              <LogOut className="w-4 h-4" />
-              <span>تسجيل الخروج</span>
-            </button>
-          ) : (
-            <div className="text-[11px] text-slate-500 text-center">
-              نظام مصادقة مباشر متصل بقاعدة بيانات Supabase Live
+              <option value="">الانتقال السريع لأي شاشة (1 - 21)...</option>
+              {SCREEN_LIST.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+
+            {/* View Mode Tabs (Device frame vs Screen Directory) */}
+            <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+              <button
+                onClick={() => setActiveTab('device')}
+                className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+                  activeTab === 'device' ? 'bg-emerald-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                شاشة الهاتف (App)
+              </button>
+              <button
+                onClick={() => setActiveTab('screens')}
+                className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+                  activeTab === 'screens' ? 'bg-emerald-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                دليل الـ 21 شاشة
+              </button>
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* Main Preview Area */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-slate-950">
-        {/* Top Status Bar */}
-        <div className="h-12 border-b border-slate-800 flex items-center justify-between px-6 bg-slate-900/50">
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>Supabase Live Connected:</span>
-            <code className="text-slate-300 font-mono text-[11px]">pvgmtufzvwkdvtbtcijn.supabase.co</code>
           </div>
-          <div className="flex items-center gap-3 text-xs">
-            <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">
-              RPC: rpc_execute_task & rpc_reschedule_task
-            </span>
-          </div>
-        </div>
+        </header>
 
-        {/* Global Feedback Banner */}
+        {/* Global Toast Feedback */}
         {feedback && (
-          <div className={`px-4 py-2 text-xs flex items-center justify-between ${feedback.type === 'success' ? 'bg-emerald-950 border-b border-emerald-800 text-emerald-200' : 'bg-red-950 border-b border-red-800 text-red-200'}`}>
-            <div className="flex items-center gap-2">
-              {feedback.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <AlertCircle className="w-4 h-4 text-red-400" />}
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top-3 duration-200">
+            <div
+              className={`px-4 py-2.5 rounded-xl border text-xs font-bold shadow-xl flex items-center gap-2 ${
+                feedback.type === 'success'
+                  ? 'bg-emerald-950 border-emerald-500 text-emerald-300'
+                  : 'bg-red-950 border-red-500 text-red-300'
+              }`}
+            >
+              {feedback.type === 'success' ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-red-400" />
+              )}
               <span>{feedback.message}</span>
             </div>
-            <button onClick={() => setFeedback(null)} className="opacity-70 hover:opacity-100">
-              <X className="w-3.5 h-3.5" />
-            </button>
           </div>
         )}
 
-        {/* Dynamic Content */}
-        <div className="flex-1 overflow-y-auto p-6 flex justify-center items-start">
-          {activeTab === 'device' && (
-            <div className="w-[420px] h-[820px] bg-slate-900 rounded-[40px] border-4 border-slate-800 shadow-2xl flex flex-col overflow-hidden relative">
-              {/* Phone Speaker Notch */}
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-28 h-4 bg-slate-950 rounded-full z-20 flex items-center justify-center">
-                <div className="w-8 h-1 bg-slate-800 rounded-full"></div>
+        {/* Tab 1: Device Viewport */}
+        {activeTab === 'device' && (
+          <div className="flex-1 flex items-center justify-center p-4 overflow-hidden bg-slate-950">
+            {/* Phone Mockup Frame */}
+            <div className="w-[410px] h-[780px] max-h-full bg-slate-900 border-[6px] border-slate-800 rounded-[44px] shadow-2xl overflow-hidden flex flex-col relative">
+              {/* Speaker notch */}
+              <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-28 h-4 bg-slate-950 rounded-full z-30 flex items-center justify-center">
+                <div className="w-10 h-1 bg-slate-800 rounded-full" />
               </div>
 
-              {/* In-Phone Screen Content */}
-              <div className="flex-1 flex flex-col pt-7 overflow-hidden bg-slate-950 text-slate-100">
+              {/* Status bar */}
+              <div className="h-7 bg-slate-950/90 text-[10px] text-slate-400 flex items-center justify-between px-6 z-20 shrink-0 select-none">
+                <span>09:41</span>
+                <span className="font-mono">AMAN 4G</span>
+                <span>100%</span>
+              </div>
+
+              {/* Phone Content Screen */}
+              <div className="flex-1 flex flex-col overflow-hidden bg-slate-950 text-slate-100 relative">
                 {loading ? (
-                  /* Session Restoring / Startup Splash */
+                  /* Splash Screen */
                   <div className="flex-1 flex flex-col items-center justify-center p-6 text-center select-none" dir="rtl">
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-amber-500 p-0.5 shadow-xl shadow-emerald-950/60 mb-4 animate-pulse">
                       <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
@@ -935,756 +647,396 @@ export default function App() {
                     <p className="text-xs text-slate-400 mb-5">جاري التحقق من الجلسة والصلاحيات...</p>
                     <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
                   </div>
-                ) : !session || !profile || currentRoute === '/auth' ? (
-                  /* AUTH-01 Login Screen */
-                  <AuthScreen
-                    supabase={supabase}
-                    onLoginSuccess={handleLoginSuccess}
-                    initialError={authError}
-                  />
-                ) : profile?.user_type === 'admin' && adminViewMode === 'admin' ? (
-                  /* Admin Interface */
+                ) : !session || !profile ? (
+                  /* AUTH STAGE (Screens 01 - 03) */
+                  authView === 'login' ? (
+                    <LoginScreen
+                      supabase={supabase}
+                      initialError={authInitialError}
+                      onLoginSuccess={handleLoginSuccess}
+                      onNavigateToSignUp={() => {
+                        setAuthInitialError(null);
+                        setAuthView('signup');
+                      }}
+                      onNavigateToForgotPassword={() => {
+                        setAuthInitialError(null);
+                        setAuthView('forgot_password');
+                      }}
+                    />
+                  ) : authView === 'signup' ? (
+                    <CreateAccountScreen
+                      supabase={supabase}
+                      onNavigateToLogin={() => setAuthView('login')}
+                      onSignUpSuccess={(prof) => handleLoginSuccess(prof, '/customer/home')}
+                    />
+                  ) : (
+                    <PasswordRecoveryScreen
+                      supabase={supabase}
+                      onNavigateToLogin={() => setAuthView('login')}
+                    />
+                  )
+                ) : profile.user_type === 'admin' ? (
+                  /* ADMIN STAGE (Screens 11 - 21) */
                   <div className="flex-1 flex flex-col overflow-hidden">
-                    {/* Admin Header */}
-                    <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                    {/* Admin Sub-navigation header */}
+                    <div className="h-10 bg-slate-900 border-b border-slate-800 px-3 flex items-center justify-between text-xs shrink-0">
+                      <span className="font-bold text-amber-400 flex items-center gap-1">
+                        <Shield className="w-3.5 h-3.5" />
+                        <span>لوحة المدير</span>
+                      </span>
+
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs">
-                          ADM
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-white leading-none">{profile.full_name || 'مشرف النظام'}</div>
-                          <div className="text-[10px] text-amber-400 mt-0.5">لوحة متابعة العمليات والمهام</div>
-                        </div>
+                        <button
+                          onClick={loadAdminData}
+                          className="p-1 rounded-lg text-slate-400 hover:text-white"
+                          title="تحديث البيانات"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={handleSignOut}
+                          className="text-[11px] text-red-400 hover:underline flex items-center gap-1"
+                        >
+                          <LogOut className="w-3 h-3" />
+                          <span>خروج</span>
+                        </button>
                       </div>
-                      <button onClick={() => loadAllData(session.user.id)} className="p-1.5 text-slate-400 hover:text-white">
-                        <RefreshCw className="w-3.5 h-3.5" />
-                      </button>
                     </div>
 
-                    {/* Admin Tabs */}
-                    <div className="flex border-b border-slate-800 bg-slate-900/40 text-xs">
-                      <button
-                        onClick={() => setAdminNavTab('requests')}
-                        className={`flex-1 py-2 text-center font-medium border-b-2 transition-all ${adminNavTab === 'requests' ? 'border-amber-500 text-amber-400 bg-amber-500/10' : 'border-transparent text-slate-400'}`}
-                      >
-                        طلبات الحماية ({pendingRequestsAdmin.length})
-                      </button>
-                      <button
-                        onClick={() => setAdminNavTab('tasks')}
-                        className={`flex-1 py-2 text-center font-medium border-b-2 transition-all ${adminNavTab === 'tasks' ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10' : 'border-transparent text-slate-400'}`}
-                      >
-                        المهام التشغيلية ({adminTasks.length})
-                      </button>
-                      <button
-                        onClick={() => setAdminNavTab('notifications')}
-                        className={`flex-1 py-2 text-center font-medium border-b-2 transition-all ${adminNavTab === 'notifications' ? 'border-sky-500 text-sky-400 bg-sky-500/10' : 'border-transparent text-slate-400'}`}
-                      >
-                        الإشعارات ({adminNotifications.filter((n) => !n.is_read).length})
-                      </button>
+                    {/* Admin Screen Container */}
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                      {adminTab === 'dashboard' && (
+                        <AdminDashboardScreen
+                          customers={adminCustomers}
+                          allNumbers={allNumbersAdmin}
+                          allRequests={allRequestsAdmin}
+                          allProtections={allProtectionsAdmin}
+                          allTasks={allTasksAdmin}
+                          adminNotifications={adminNotifications}
+                          onNavigateTab={(t) => setAdminTab(t)}
+                        />
+                      )}
+                      {adminTab === 'customers' && (
+                        <AdminCustomersScreen
+                          customers={adminCustomers}
+                          allNumbers={allNumbersAdmin}
+                          allRequests={allRequestsAdmin}
+                          allProtections={allProtectionsAdmin}
+                          allTasks={allTasksAdmin}
+                        />
+                      )}
+                      {adminTab === 'numbers' && (
+                        <AdminCustomerNumbersScreen
+                          numbers={allNumbersAdmin}
+                          customers={adminCustomers}
+                          protections={allProtectionsAdmin}
+                          requests={allRequestsAdmin}
+                        />
+                      )}
+                      {adminTab === 'requests' && (
+                        <AdminProtectionRequestsScreen
+                          supabase={supabase}
+                          requests={allRequestsAdmin}
+                          customers={adminCustomers}
+                          onRefresh={loadAdminData}
+                        />
+                      )}
+                      {adminTab === 'protections' && (
+                        <AdminProtectionsScreen
+                          protections={allProtectionsAdmin}
+                          customers={adminCustomers}
+                        />
+                      )}
+                      {adminTab === 'tasks' && (
+                        <AdminPaymentTasksScreen
+                          supabase={supabase}
+                          tasks={allTasksAdmin}
+                          customers={adminCustomers}
+                          onRefresh={loadAdminData}
+                        />
+                      )}
+                      {adminTab === 'providers' && (
+                        <AdminTelecomProvidersScreen
+                          supabase={supabase}
+                          providers={providers}
+                          prefixes={prefixes}
+                          onRefresh={loadAdminData}
+                        />
+                      )}
+                      {adminTab === 'payment_methods' && (
+                        <AdminPaymentMethodsScreen
+                          supabase={supabase}
+                          paymentMethods={paymentMethods}
+                          onRefresh={loadAdminData}
+                        />
+                      )}
+                      {adminTab === 'notifications' && (
+                        <AdminNotificationsScreen
+                          supabase={supabase}
+                          notifications={adminNotifications}
+                          onRefresh={loadAdminData}
+                          onNavigateTab={(t) => setAdminTab(t)}
+                        />
+                      )}
+                      {adminTab === 'audit' && (
+                        <AdminAuditLogsScreen logs={auditLogs} />
+                      )}
+                      {adminTab === 'settings' && (
+                        <AdminSystemSettingsScreen
+                          supabase={supabase}
+                          providers={providers}
+                          taskSettings={taskSettings}
+                          systemSettings={systemSettings}
+                          onRefresh={loadAdminData}
+                        />
+                      )}
                     </div>
 
-                    {/* Admin Tab Content */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                      {adminNavTab === 'requests' && (
-                        <>
-                          <div className="text-xs font-semibold text-slate-300 mb-2">طلبات الحماية المعلقة (Pending)</div>
-                          {pendingRequestsAdmin.length === 0 ? (
-                            <div className="text-center py-12 text-slate-500 text-xs">لا توجد طلبات معلقة بانتظار الاعتماد</div>
-                          ) : (
-                            pendingRequestsAdmin.map((req) => (
-                              <div key={req.id} className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-2">
-                                <div className="flex justify-between items-start">
-                                  <span className="text-xs font-bold text-white">{req.phone_number || 'رقم هاتف'}</span>
-                                  <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                                    PENDING
-                                  </span>
-                                </div>
-                                <div className="text-[11px] text-slate-400">مرجع الحوالة: <span className="font-mono text-slate-200">{req.payment_transfer_reference}</span></div>
-                                <div className="text-[11px] text-slate-400">المبلغ: <span className="text-emerald-400 font-bold">{req.requested_price} YER</span></div>
-                                <div className="flex gap-2 pt-2 border-t border-slate-800">
-                                  <button
-                                    onClick={() => handleApproveRequest(req.id)}
-                                    disabled={actionLoading}
-                                    className="flex-1 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium"
-                                  >
-                                    اعتماد وتفعيل
-                                  </button>
-                                  <button
-                                    onClick={() => setRejectModalReq(req)}
-                                    className="flex-1 py-1.5 rounded-lg bg-red-950/40 border border-red-900/40 text-red-400 hover:bg-red-900/40 text-xs font-medium"
-                                  >
-                                    رفض الطلب
-                                  </button>
-                                </div>
-                              </div>
-                            ))
-                          )}
-                        </>
-                      )}
-
-                      {adminNavTab === 'tasks' && (
-                        <>
-                          {/* Task Filters */}
-                          <div className="flex gap-1 overflow-x-auto pb-1 text-[11px]">
-                            {(['all', 'due', 'overdue', 'upcoming', 'completed'] as const).map((tab) => (
-                              <button
-                                key={tab}
-                                onClick={() => setTaskFilter(tab)}
-                                className={`px-2.5 py-1 rounded-lg shrink-0 ${taskFilter === tab ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-900 text-slate-400 hover:text-white'}`}
-                              >
-                                {tab === 'all' ? 'الكل' : tab === 'due' ? 'مستحقة' : tab === 'overdue' ? 'متأخرة' : tab === 'upcoming' ? 'مجدولة' : 'مكتملة'}
-                              </button>
-                            ))}
-                          </div>
-
-                          {/* Search */}
-                          <input
-                            type="text"
-                            value={taskSearch}
-                            onChange={(e) => setTaskSearch(e.target.value)}
-                            placeholder="بحث برقم الهاتف أو الشركة..."
-                            className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-500"
-                          />
-
-                          {filteredTasks.length === 0 ? (
-                            <div className="text-center py-12 text-slate-500 text-xs">لا توجد مهام تشغيلية مطابقة</div>
-                          ) : (
-                            filteredTasks.map((t) => {
-                              const s = resolveTaskStatus(t.status, t.due_at);
-                              return (
-                                <div key={t.id} className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-2">
-                                  <div className="flex justify-between items-center">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="w-5 h-5 rounded bg-slate-800 text-[10px] font-bold text-slate-300 flex items-center justify-center">
-                                        #{t.task_number}
-                                      </span>
-                                      <span className="text-xs font-bold text-white">{t.phone_number || 'رقم محمي'}</span>
-                                    </div>
-                                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${s.bg} ${s.text}`}>
-                                      {s.label}
-                                    </span>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-1 text-[11px] text-slate-400 bg-slate-950/60 p-2 rounded-lg">
-                                    <div>الاستحقاق: <span className="text-slate-200">{t.due_at?.substring(0, 10)}</span></div>
-                                    <div>المبلغ: <span className="text-emerald-400 font-bold">{t.amount} {t.currency}</span></div>
-                                  </div>
-                                  {t.status === 'completed' && t.execution_note && (
-                                    <div className="text-[10px] text-slate-400 bg-slate-800/40 p-1.5 rounded">
-                                      ملاحظة: {t.execution_note}
-                                    </div>
-                                  )}
-                                  {t.status !== 'completed' && (
-                                    <div className="flex gap-2 pt-1 border-t border-slate-800">
-                                      <button
-                                        onClick={() => setExecutingTask(t)}
-                                        className="flex-1 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium flex items-center justify-center gap-1"
-                                      >
-                                        <Play className="w-3 h-3" />
-                                        <span>تنفيذ المهمة</span>
-                                      </button>
-                                      <button
-                                        onClick={() => setReschedulingTask(t)}
-                                        className="flex-1 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium flex items-center justify-center gap-1"
-                                      >
-                                        <RotateCcw className="w-3 h-3" />
-                                        <span>إعادة جدولة</span>
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })
-                          )}
-                        </>
-                      )}
-
-                      {adminNavTab === 'notifications' && (
-                        <div className="space-y-2">
-                          {adminNotifications.length === 0 ? (
-                            <div className="text-center py-12 text-slate-500 text-xs">لا توجد إشعارات للإدارة</div>
-                          ) : (
-                            adminNotifications.map((notif) => (
-                              <div
-                                key={notif.id}
-                                onClick={() => handleMarkNotificationRead(notif.id, true)}
-                                className={`p-3 rounded-xl border text-xs cursor-pointer transition-all ${notif.is_read ? 'bg-slate-900/60 border-slate-800 text-slate-400' : 'bg-slate-900 border-amber-500/40 text-slate-200'}`}
-                              >
-                                <div className="flex justify-between items-center mb-1">
-                                  <span className="font-bold text-white">{notif.title}</span>
-                                  {!notif.is_read && <span className="w-2 h-2 rounded-full bg-amber-500"></span>}
-                                </div>
-                                <div className="text-[11px] text-slate-300">{notif.body}</div>
-                                <div className="text-[10px] text-slate-500 mt-1">{notif.created_at?.substring(0, 16).replace('T', ' ')}</div>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      )}
+                    {/* Admin Bottom Nav Bar */}
+                    <div className="h-14 bg-slate-900 border-t border-slate-800 grid grid-cols-5 items-center px-1 shrink-0 z-10 text-[10px]">
+                      <button
+                        onClick={() => setAdminTab('dashboard')}
+                        className={`flex flex-col items-center gap-1 ${
+                          adminTab === 'dashboard' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <Home className="w-4 h-4" />
+                        <span>الرئيسية</span>
+                      </button>
+                      <button
+                        onClick={() => setAdminTab('requests')}
+                        className={`flex flex-col items-center gap-1 relative ${
+                          adminTab === 'requests' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <Clock className="w-4 h-4" />
+                        <span>الطلبات</span>
+                        {allRequestsAdmin.filter((r) => r.status === 'pending').length > 0 && (
+                          <span className="w-2 h-2 rounded-full bg-amber-400 absolute top-0 right-3" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setAdminTab('tasks')}
+                        className={`flex flex-col items-center gap-1 ${
+                          adminTab === 'tasks' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <CheckSquare className="w-4 h-4" />
+                        <span>المهام</span>
+                      </button>
+                      <button
+                        onClick={() => setAdminTab('customers')}
+                        className={`flex flex-col items-center gap-1 ${
+                          adminTab === 'customers' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <Users className="w-4 h-4" />
+                        <span>العملاء</span>
+                      </button>
+                      <button
+                        onClick={() => setAdminTab('settings')}
+                        className={`flex flex-col items-center gap-1 ${
+                          adminTab === 'settings' || adminTab === 'providers' || adminTab === 'payment_methods'
+                            ? 'text-amber-400 font-bold'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <Settings className="w-4 h-4" />
+                        <span>الإعدادات</span>
+                      </button>
                     </div>
                   </div>
                 ) : (
-                  /* Customer Interface */
+                  /* CUSTOMER STAGE (Screens 04 - 10) */
                   <div className="flex-1 flex flex-col overflow-hidden">
-                    {/* Customer Header */}
-                    <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
-                          {profile?.full_name?.substring(0, 2) || 'أمان'}
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-white leading-none">{profile?.full_name || 'حساب العميل'}</div>
-                          <div className="text-[10px] text-slate-400 mt-0.5">بوابة العميل الرسمية</div>
-                        </div>
-                      </div>
-                      <button onClick={() => loadAllData(session.user.id)} className="p-1.5 text-slate-400 hover:text-white">
-                        <RefreshCw className="w-3.5 h-3.5" />
-                      </button>
+                    {/* Customer Screen Container */}
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                      {customerTab === 'home' && (
+                        <CustomerHomeScreen
+                          profile={profile}
+                          numbers={numbers}
+                          protections={protections}
+                          requests={requests}
+                          notifications={clientNotifications}
+                          onNavigateTab={(t) => setCustomerTab(t)}
+                          onOpenAddNumber={() => setCustomerTab('numbers')}
+                          onOpenNewRequest={() => setCustomerTab('requests')}
+                        />
+                      )}
+                      {customerTab === 'numbers' && (
+                        <CustomerNumbersScreen
+                          supabase={supabase}
+                          numbers={numbers}
+                          protections={protections}
+                          requests={requests}
+                          onRefresh={() => loadCustomerData(profile.id)}
+                          onRequestProtectionForNumber={(n) => {
+                            setPreselectedNumberForRequest(n.id);
+                            setCustomerTab('requests');
+                          }}
+                        />
+                      )}
+                      {customerTab === 'requests' && (
+                        <CustomerProtectionRequestsScreen
+                          supabase={supabase}
+                          requests={requests}
+                          numbers={numbers}
+                          plans={plans}
+                          paymentMethods={paymentMethods}
+                          protections={protections}
+                          onRefresh={() => loadCustomerData(profile.id)}
+                          preselectedNumberId={preselectedNumberForRequest}
+                        />
+                      )}
+                      {customerTab === 'protections' && (
+                        <CustomerProtectionsScreen
+                          supabase={supabase}
+                          protections={protections}
+                          plans={plans}
+                          paymentMethods={paymentMethods}
+                          onRefresh={() => loadCustomerData(profile.id)}
+                          onOpenNewRequest={() => setCustomerTab('requests')}
+                        />
+                      )}
+                      {customerTab === 'notifications' && (
+                        <CustomerNotificationsScreen
+                          supabase={supabase}
+                          notifications={clientNotifications}
+                          onRefresh={() => loadCustomerData(profile.id)}
+                          onNavigateTab={(t) => setCustomerTab(t)}
+                        />
+                      )}
+                      {customerTab === 'account' && (
+                        <CustomerAccountScreen
+                          supabase={supabase}
+                          profile={profile}
+                          onRefreshProfile={() => fetchUserProfile(profile.id)}
+                          onSignOut={handleSignOut}
+                        />
+                      )}
                     </div>
 
-                    {/* Customer Tabs */}
-                    <div className="flex border-b border-slate-800 bg-slate-900/40 text-[11px]">
+                    {/* Customer Bottom Navigation Bar */}
+                    <div className="h-14 bg-slate-900 border-t border-slate-800 grid grid-cols-5 items-center px-1 shrink-0 z-10 text-[10px]">
                       <button
-                        onClick={() => setCustomerNavTab('numbers')}
-                        className={`flex-1 py-2 text-center font-medium border-b-2 transition-all ${customerNavTab === 'numbers' ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10' : 'border-transparent text-slate-400'}`}
+                        onClick={() => setCustomerTab('home')}
+                        className={`flex flex-col items-center gap-1 ${
+                          customerTab === 'home' ? 'text-emerald-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+                        }`}
                       >
-                        أرقامي ({numbers.length})
+                        <Home className="w-4 h-4" />
+                        <span>الرئيسية</span>
                       </button>
                       <button
-                        onClick={() => setCustomerNavTab('protections')}
-                        className={`flex-1 py-2 text-center font-medium border-b-2 transition-all ${customerNavTab === 'protections' ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10' : 'border-transparent text-slate-400'}`}
+                        onClick={() => setCustomerTab('numbers')}
+                        className={`flex flex-col items-center gap-1 ${
+                          customerTab === 'numbers' ? 'text-emerald-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+                        }`}
                       >
-                        الحمايات ({protections.length})
+                        <Smartphone className="w-4 h-4" />
+                        <span>أرقامي</span>
                       </button>
                       <button
-                        onClick={() => setCustomerNavTab('plans')}
-                        className={`flex-1 py-2 text-center font-medium border-b-2 transition-all ${customerNavTab === 'plans' ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10' : 'border-transparent text-slate-400'}`}
+                        onClick={() => setCustomerTab('requests')}
+                        className={`flex flex-col items-center gap-1 ${
+                          customerTab === 'requests' ? 'text-emerald-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+                        }`}
                       >
-                        الباقات
+                        <Shield className="w-4 h-4" />
+                        <span>الطلبات</span>
                       </button>
                       <button
-                        onClick={() => setCustomerNavTab('payments')}
-                        className={`flex-1 py-2 text-center font-medium border-b-2 transition-all ${customerNavTab === 'payments' ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10' : 'border-transparent text-slate-400'}`}
+                        onClick={() => setCustomerTab('notifications')}
+                        className={`flex flex-col items-center gap-1 relative ${
+                          customerTab === 'notifications' ? 'text-emerald-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+                        }`}
                       >
-                        الدفع
+                        <Bell className="w-4 h-4" />
+                        <span>الإشعارات</span>
+                        {clientNotifications.filter((n) => !n.is_read).length > 0 && (
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 absolute top-0 right-3" />
+                        )}
                       </button>
                       <button
-                        onClick={() => setCustomerNavTab('notifications')}
-                        className={`flex-1 py-2 text-center font-medium border-b-2 transition-all ${customerNavTab === 'notifications' ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10' : 'border-transparent text-slate-400'}`}
+                        onClick={() => setCustomerTab('account')}
+                        className={`flex flex-col items-center gap-1 ${
+                          customerTab === 'account' ? 'text-emerald-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+                        }`}
                       >
-                        الإشعارات {clientNotifications.filter((n) => !n.is_read).length > 0 && `(${clientNotifications.filter((n) => !n.is_read).length})`}
+                        <UserIcon className="w-4 h-4" />
+                        <span>حسابي</span>
                       </button>
-                    </div>
-
-                    {/* Customer Tab Body */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                      {customerNavTab === 'numbers' && (
-                        <>
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-semibold text-slate-300">قائمة الأرقام المسجلة</span>
-                            <button
-                              onClick={() => setIsAddingNumber(!isAddingNumber)}
-                              className="text-xs px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg flex items-center gap-1"
-                            >
-                              <Plus className="w-3 h-3" />
-                              <span>إضافة رقم</span>
-                            </button>
-                          </div>
-
-                          {isAddingNumber && (
-                            <form onSubmit={handleAddNumber} className="p-3 bg-slate-900 border border-emerald-500/40 rounded-xl space-y-2">
-                              <label className="text-[11px] text-slate-300 block">أدخل رقم الهاتف اليمني (9 أرقام):</label>
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="text"
-                                  value={phoneInput}
-                                  onChange={(e) => handlePhoneInputChange(e.target.value)}
-                                  placeholder="770000000"
-                                  className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
-                                  maxLength={9}
-                                  required
-                                />
-                                {detectedOp && (
-                                  <span className={`text-[10px] px-2 py-1 rounded font-bold ${detectedOp.isValid ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                                    {detectedOp.nameAr}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex gap-2 pt-1">
-                                <button
-                                  type="submit"
-                                  disabled={actionLoading || !detectedOp?.isValid}
-                                  className="flex-1 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-semibold"
-                                >
-                                  حفظ الرقم في الحساب
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setIsAddingNumber(false)}
-                                  className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 text-xs"
-                                >
-                                  إلغاء
-                                </button>
-                              </div>
-                            </form>
-                          )}
-
-                          {numbers.length === 0 ? (
-                            <div className="text-center py-12 text-slate-500 text-xs">لا توجد أرقام مسجلة، ابدأ بإضافة رقم جديد</div>
-                          ) : (
-                            numbers.map((num) => {
-                              const activeProt = protections.find((p) => p.customer_number_id === num.id && p.status === 'active');
-                              const pendingReq = requests.find((r) => r.customer_number_id === num.id && r.status === 'pending');
-                              return (
-                                <div key={num.id} className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-2">
-                                  <div className="flex justify-between items-center">
-                                    <div className="flex items-center gap-2">
-                                      <Phone className="w-4 h-4 text-emerald-400" />
-                                      <span className="font-mono text-sm font-bold text-white">{num.phone_number}</span>
-                                    </div>
-                                    <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                                      {num.company_name_ar}
-                                    </span>
-                                  </div>
-
-                                  <div className="flex justify-between items-center text-[11px] pt-1 border-t border-slate-800/60">
-                                    {activeProt ? (
-                                      <span className="text-emerald-400 font-bold flex items-center gap-1">
-                                        <CheckCircle className="w-3 h-3" />
-                                        محمي حتى {activeProt.end_at.substring(0, 10)}
-                                      </span>
-                                    ) : pendingReq ? (
-                                      <span className="text-amber-400 font-medium">طلب قيد المراجعة</span>
-                                    ) : (
-                                      <span className="text-slate-500">غير محمي</span>
-                                    )}
-
-                                    {!activeProt && !pendingReq && (
-                                      <button
-                                        onClick={() => openCreateRequestModal(num)}
-                                        className="text-[11px] text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-0.5"
-                                      >
-                                        <span>طلب حماية</span>
-                                        <ArrowRight className="w-3 h-3" />
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })
-                          )}
-                        </>
-                      )}
-
-                      {customerNavTab === 'protections' && (
-                        <>
-                          <div className="text-xs font-semibold text-slate-300 mb-2">الحمايات النشطة وحالة التجديد</div>
-                          {protections.length === 0 ? (
-                            <div className="text-center py-8 text-slate-500 text-xs">لا توجد حمايات نشطة حالياً</div>
-                          ) : (
-                            protections.map((prot) => {
-                              const health = calculateRenewalHealth(prot.end_at);
-                              return (
-                                <div key={prot.id} className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-2">
-                                  <div className="flex justify-between items-center">
-                                    <span className="font-mono text-xs font-bold text-white">{prot.phone_number || 'رقم محمي'}</span>
-                                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold flex items-center gap-1 ${health.bg} ${health.color}`}>
-                                      <span>{health.symbol}</span>
-                                      <span>{health.label} ({health.days} يوم)</span>
-                                    </span>
-                                  </div>
-                                  <div className="text-[11px] text-slate-400">{prot.package_name_snapshot} ({prot.duration_days_snapshot} يوم)</div>
-                                  <div className="text-[10px] text-slate-500">
-                                    الصلاحية: من {prot.start_at.substring(0, 10)} إلى {prot.end_at.substring(0, 10)}
-                                  </div>
-                                  {(health.health === 'SOON' || health.health === 'DANGER') && (
-                                    <div className="pt-1.5 border-t border-slate-800 flex justify-between items-center">
-                                      <span className="text-[10px] text-amber-400">اقترب موعد التجديد الدوري</span>
-                                      <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-600/30 text-emerald-300 font-bold">
-                                        جاهز للتمديد
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })
-                          )}
-
-                          <div className="text-xs font-semibold text-slate-300 mt-4 mb-2">طلبات الحماية السابقة</div>
-                          {requests.length === 0 ? (
-                            <div className="text-center py-4 text-slate-500 text-xs">لا توجد طلبات سابقة</div>
-                          ) : (
-                            requests.map((req) => (
-                              <div key={req.id} className="p-2.5 bg-slate-900/60 border border-slate-800/80 rounded-lg flex justify-between items-center text-xs">
-                                <div>
-                                  <div className="font-mono text-slate-200">{req.phone_number || 'طلب حماية'}</div>
-                                  <div className="text-[10px] text-slate-500">{req.created_at.substring(0, 10)} • مرجع {req.payment_transfer_reference}</div>
-                                </div>
-                                <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${req.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' : req.status === 'rejected' ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                                  {req.status.toUpperCase()}
-                                </span>
-                              </div>
-                            ))
-                          )}
-                        </>
-                      )}
-
-                      {customerNavTab === 'plans' && (
-                        <div className="space-y-2.5">
-                          <div className="text-xs font-semibold text-slate-300 mb-1">دليل باقات الحماية المعتمدة</div>
-                          {plans.map((p) => (
-                            <div key={p.id} className="p-3 bg-slate-900 border border-slate-800 rounded-xl flex justify-between items-center">
-                              <div>
-                                <div className="text-xs font-bold text-white">{p.name_ar}</div>
-                                <div className="text-[10px] text-slate-400 mt-0.5">المدة: {p.duration_days} يوماً • تجديد ومتابعة منتظمة</div>
-                              </div>
-                              <div className="text-left">
-                                <div className="text-sm font-bold text-emerald-400">{p.price}</div>
-                                <div className="text-[9px] text-slate-500 uppercase">{p.currency}</div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {customerNavTab === 'payments' && (
-                        <div className="space-y-3">
-                          <div className="text-xs font-semibold text-slate-300 mb-1">حسابات وطرق التحويل المعتمدة</div>
-                          {paymentMethods.map((pm) => (
-                            <div key={pm.id} className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-2">
-                              <div className="flex justify-between items-center">
-                                <div className="text-xs font-bold text-white">{pm.name_ar}</div>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">{pm.code}</span>
-                              </div>
-                              {pm.account_identifier && (
-                                <div className="flex justify-between items-center p-2 rounded-lg bg-slate-950 border border-slate-800">
-                                  <div>
-                                    <div className="text-[9px] text-slate-500">رقم الحساب / المحفظة:</div>
-                                    <div className="text-xs font-mono font-bold text-emerald-400">{pm.account_identifier}</div>
-                                    {pm.account_name && <div className="text-[10px] text-slate-400">{pm.account_name}</div>}
-                                  </div>
-                                  <button
-                                    onClick={() => copyToClipboard(pm.account_identifier!)}
-                                    className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] flex items-center gap-1"
-                                  >
-                                    {copiedId === pm.account_identifier ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                                    <span>{copiedId === pm.account_identifier ? 'تم النسخ' : 'نسخ'}</span>
-                                  </button>
-                                </div>
-                              )}
-                              {pm.instructions && <div className="text-[10px] text-slate-400 leading-relaxed">{pm.instructions}</div>}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {customerNavTab === 'notifications' && (
-                        <div className="space-y-2">
-                          <div className="text-xs font-semibold text-slate-300 mb-1">مركز إشعارات الحماية والتنبيهات</div>
-                          {clientNotifications.length === 0 ? (
-                            <div className="text-center py-12 text-slate-500 text-xs">لا توجد إشعارات جديدة</div>
-                          ) : (
-                            clientNotifications.map((notif) => (
-                              <div
-                                key={notif.id}
-                                onClick={() => handleMarkNotificationRead(notif.id, false)}
-                                className={`p-3 rounded-xl border text-xs cursor-pointer transition-all ${notif.is_read ? 'bg-slate-900/60 border-slate-800 text-slate-400' : 'bg-slate-900 border-emerald-500/40 text-slate-200'}`}
-                              >
-                                <div className="flex justify-between items-center mb-1">
-                                  <span className="font-bold text-white">{notif.title}</span>
-                                  {!notif.is_read && <span className="w-2 h-2 rounded-full bg-emerald-500"></span>}
-                                </div>
-                                <div className="text-[11px] text-slate-300">{notif.body}</div>
-                                <div className="text-[10px] text-slate-500 mt-1">{notif.created_at?.substring(0, 16).replace('T', ' ')}</div>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
               </div>
+
+              {/* Bottom Phone Bar */}
+              <div className="h-4 bg-slate-950 flex items-center justify-center shrink-0">
+                <div className="w-24 h-1 bg-slate-700 rounded-full" />
+              </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {activeTab === 'architecture' && (
-            <div className="max-w-2xl w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 text-xs text-slate-300 space-y-4">
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <Database className="w-5 h-5 text-emerald-400" />
-                <span>المعمارية وقاعدة البيانات في المرحلة الرابعة (Stage 4)</span>
-              </h2>
+        {/* Tab 2: All 21 Screens Directory View */}
+        {activeTab === 'screens' && (
+          <div className="flex-1 overflow-y-auto p-6 space-y-4" dir="rtl">
+            <div>
+              <h2 className="text-lg font-bold text-white">فهرس الشاشات الـ 21 لنظام AMAN</h2>
+              <p className="text-xs text-slate-400 mt-1">
+                تغطية شاملة لكافة متطلبات المواصفة المرجعية AMAN.XZ1.4 والربط الحقيقي مع Supabase.
+              </p>
+            </div>
 
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-                <div className="font-bold text-emerald-400">1. الجداول والمخططات المعتمدة في Stage 4:</div>
-                <ul className="list-disc list-inside space-y-1 text-slate-400">
-                  <li><code className="text-white">payment_methods</code>: طرق الدفع، تعليمات التحويل، الحسابات الرسمية.</li>
-                  <li><code className="text-white">protection_tasks</code>: المهام التشغيلية، التواريخ، المبالغ، الحالات (scheduled, due, overdue, completed).</li>
-                  <li><code className="text-white">task_reschedule_history</code>: توثيق عمليات إعادة الجدولة، التواريخ السابقة، والأسباب.</li>
-                  <li><code className="text-white">client_notifications</code> & <code className="text-white">admin_notifications</code>: إشعارات التنبيه والتجديد.</li>
-                  <li><code className="text-white">transactions</code>: القيود المالية للإيرادات والمصروفات الناتجة عن تنفيذ المهام.</li>
-                </ul>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-                <div className="font-bold text-amber-400">2. الإجراءات المخزنة الموثوقة (RPCs):</div>
-                <ul className="list-disc list-inside space-y-1 text-slate-400">
-                  <li><code className="text-amber-300">rpc_execute_task(p_task_id, p_execution_note)</code>: تنفيذ المهمة، تسجيل القيد المالي، والجدولة التلقائية.</li>
-                  <li><code className="text-amber-300">rpc_reschedule_task(p_task_id, p_new_scheduled_at, p_reason)</code>: إعادة الجدولة وتحديث الخطط المستقبلية.</li>
-                  <li><code className="text-amber-300">rpc_mark_notification_read(p_notification_id)</code>: تأكيد قراءة إشعار العميل.</li>
-                  <li><code className="text-amber-300">rpc_mark_admin_notification_read(p_notification_id)</code>: تأكيد قراءة إشعار المشرف.</li>
-                </ul>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-                <div className="font-bold text-sky-400">3. محددات حالات التجديد وصحة الحماية (Renewal Health):</div>
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <div className="p-2 rounded bg-slate-900 border border-slate-800">
-                    <span className="font-bold text-emerald-400">🟢 آمن (Safe):</span> أكثر من 14 يوماً متبقية.
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {SCREEN_LIST.map((sc) => (
+                <div
+                  key={sc.id}
+                  onClick={() => {
+                    setActiveTab('device');
+                    setScreenJump(sc.id);
+                    if (sc.type === 'auth') {
+                      setAuthView(sc.view as any);
+                    } else if (sc.type === 'customer') {
+                      setCustomerTab(sc.tab as any);
+                    } else if (sc.type === 'admin') {
+                      setAdminTab(sc.tab as any);
+                    }
+                  }}
+                  className="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-emerald-500/60 transition-all cursor-pointer group space-y-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono font-bold text-emerald-400 group-hover:text-emerald-300">
+                      #{sc.id.toString().padStart(2, '0')}
+                    </span>
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+                        sc.type === 'auth'
+                          ? 'bg-purple-500/20 text-purple-300'
+                          : sc.type === 'customer'
+                          ? 'bg-emerald-500/20 text-emerald-300'
+                          : 'bg-amber-500/20 text-amber-300'
+                      }`}
+                    >
+                      {sc.type === 'auth' ? 'المصادقة' : sc.type === 'customer' ? 'واجهة العميل' : 'واجهة الإدارة'}
+                    </span>
                   </div>
-                  <div className="p-2 rounded bg-slate-900 border border-slate-800">
-                    <span className="font-bold text-amber-400">🟡 قريب (Soon):</span> بين 7 إلى 14 يوماً متبقية.
-                  </div>
-                  <div className="p-2 rounded bg-slate-900 border border-slate-800">
-                    <span className="font-bold text-red-400">🔴 خطر (Danger):</span> أقل من 7 أيام متبقية.
-                  </div>
-                  <div className="p-2 rounded bg-slate-900 border border-slate-800">
-                    <span className="font-bold text-slate-400">⚫ منتهي (Expired):</span> 0 يوم أو منتهي الصلاحية.
+
+                  <h3 className="text-xs font-bold text-white group-hover:text-emerald-200">
+                    {sc.name}
+                  </h3>
+
+                  <div className="text-[11px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-800/80">
+                    <span>انقر لتشغيل الشاشة في الهاتف</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-emerald-400 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
-
-      {/* Execute Task Modal */}
-      {executingTask && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-sm font-bold text-white">توثيق تنفيذ المهمة #{executingTask.task_number}</h3>
-              <button onClick={() => setExecutingTask(null)} className="text-slate-500 hover:text-white"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="text-xs text-slate-400 space-y-1">
-              <div>الرقم: <span className="font-bold text-white">{executingTask.phone_number || 'رقم محمي'}</span></div>
-              <div>المبلغ: <span className="font-bold text-emerald-400">{executingTask.amount} {executingTask.currency}</span></div>
-              <div className="text-[10px] text-slate-500 pt-1">سيؤدي التنفيذ إلى تسجيل مصروف مالي وإنشاء المهمة التالية تلقائياً إذا كانت ضمن فترة الحماية.</div>
-            </div>
-            <form onSubmit={handleExecuteTask} className="space-y-3">
-              <textarea
-                value={executionNote}
-                onChange={(e) => setExecutionNote(e.target.value)}
-                placeholder="ملاحظات التنفيذ (اختياري)..."
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 h-20 resize-none"
-              />
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={actionLoading}
-                  className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
-                >
-                  {actionLoading ? 'جاري التنفيذ...' : 'تأكيد التنفيذ'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setExecutingTask(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-400 text-xs"
-                >
-                  إلغاء
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Reschedule Task Modal */}
-      {reschedulingTask && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-sm font-bold text-white">إعادة جدولة المهمة #{reschedulingTask.task_number}</h3>
-              <button onClick={() => setReschedulingTask(null)} className="text-slate-500 hover:text-white"><X className="w-4 h-4" /></button>
-            </div>
-            <form onSubmit={handleRescheduleTask} className="space-y-3">
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">تاريخ الاستحقاق الجديد:</label>
-                <input
-                  type="date"
-                  value={rescheduleDate}
-                  onChange={(e) => setRescheduleDate(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">سبب إعادة الجدولة:</label>
-                <input
-                  type="text"
-                  value={rescheduleReason}
-                  onChange={(e) => setRescheduleReason(e.target.value)}
-                  placeholder="طلب العميل / عطل فني في المشغل..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
-                />
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="submit"
-                  disabled={actionLoading}
-                  className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
-                >
-                  {actionLoading ? 'جاري الحفظ...' : 'حفظ الجدولة'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setReschedulingTask(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-400 text-xs"
-                >
-                  إلغاء
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Create Protection Request Modal */}
-      {showRequestModal && targetNumber && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-sm font-bold text-white">طلب حماية رقم</h3>
-              <button onClick={() => setShowRequestModal(false)} className="text-slate-500 hover:text-white"><X className="w-4 h-4" /></button>
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex justify-between items-center text-xs">
-              <span className="font-mono font-bold text-emerald-400">{targetNumber.phone_number}</span>
-              <span className="text-slate-400">{targetNumber.company_name_ar}</span>
-            </div>
-
-            {conflictWarning && (
-              <div className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-900/40 text-amber-300 text-xs flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
-                <span>{conflictWarning}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmitProtectionRequest} className="space-y-3">
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">اختر باقة الحماية:</label>
-                <select
-                  value={selectedPlanId}
-                  onChange={(e) => setSelectedPlanId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
-                  required
-                >
-                  {plans.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name_ar} ({p.price} {p.currency})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">طريقة التحويل / الدفع:</label>
-                <select
-                  value={selectedPmId}
-                  onChange={(e) => setSelectedPmId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
-                  required
-                >
-                  {paymentMethods.map((pm) => (
-                    <option key={pm.id} value={pm.id}>
-                      {pm.name_ar} {pm.account_identifier ? `(${pm.account_identifier})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">رقم مرجع الحوالة / الإشعار:</label>
-                <input
-                  type="text"
-                  value={transferRef}
-                  onChange={(e) => setTransferRef(e.target.value)}
-                  placeholder="مثال: 987654321"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">ملاحظة للطلب (اختياري):</label>
-                <input
-                  type="text"
-                  value={customerNote}
-                  onChange={(e) => setCustomerNote(e.target.value)}
-                  placeholder="أي ملاحظة أو توجيه..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="submit"
-                  disabled={actionLoading || !!conflictWarning}
-                  className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-bold text-xs"
-                >
-                  {actionLoading ? 'جاري الإرسال...' : 'إرسال طلب الحماية'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowRequestModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-400 text-xs"
-                >
-                  إلغاء
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Reject Request Modal */}
-      {rejectModalReq && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-sm font-bold text-white">رفض طلب الحماية</h3>
-              <button onClick={() => setRejectModalReq(null)} className="text-slate-500 hover:text-white"><X className="w-4 h-4" /></button>
-            </div>
-            <form onSubmit={handleRejectRequest} className="space-y-3">
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">سبب الرفض (إلزامي):</label>
-                <textarea
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  placeholder="سبب الرفض: مرجع الحوالة غير مطابق / الحساب غير مكتمل..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 h-24 resize-none"
-                  required
-                />
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={actionLoading || !rejectionReason.trim()}
-                  className="flex-1 py-2 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white font-bold text-xs"
-                >
-                  {actionLoading ? 'جاري الرفض...' : 'تأكيد الرفض'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRejectModalReq(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-400 text-xs"
-                >
-                  إلغاء
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
