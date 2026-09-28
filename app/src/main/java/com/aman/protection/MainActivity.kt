@@ -6,9 +6,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.aman.protection.presentation.admin.AdminProtectionViewModel
 import com.aman.protection.presentation.auth.AuthViewModel
 import com.aman.protection.presentation.customer.CustomerViewModel
 import com.aman.protection.presentation.main.MainViewModel
+import com.aman.protection.presentation.protection.CustomerProtectionViewModel
 import com.aman.protection.presentation.screens.AmanMainApp
 
 /**
@@ -50,13 +52,42 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val customerProtectionViewModel: CustomerProtectionViewModel by viewModels {
+        object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val app = AmanApplication.instance
+                @Suppress("UNCHECKED_CAST")
+                return CustomerProtectionViewModel(
+                    app.protectionPlanRepository,
+                    app.protectionRequestRepository,
+                    app.protectionRepository
+                ) as T
+            }
+        }
+    }
+
+    private val adminProtectionViewModel: AdminProtectionViewModel by viewModels {
+        object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val app = AmanApplication.instance
+                @Suppress("UNCHECKED_CAST")
+                return AdminProtectionViewModel(
+                    app.protectionRequestRepository,
+                    app.protectionRepository
+                ) as T
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             AmanMainApp(
                 mainViewModel = mainViewModel,
                 authViewModel = authViewModel,
-                customerViewModel = customerViewModel
+                customerViewModel = customerViewModel,
+                protectionViewModel = customerProtectionViewModel,
+                adminProtectionViewModel = adminProtectionViewModel
             )
         }
     }

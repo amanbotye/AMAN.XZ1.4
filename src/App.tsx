@@ -25,7 +25,16 @@ import {
   FolderGit2,
   Info,
   X,
-  PhoneCall
+  PhoneCall,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  ArrowRight,
+  CreditCard,
+  Building2,
+  Calendar,
+  Lock
 } from 'lucide-react';
 
 const SUPABASE_URL = 'https://pvgmtufzvwkdvtbtcijn.supabase.co';
@@ -66,6 +75,64 @@ interface CustomerNumberItem {
   company_code?: string;
 }
 
+interface ProtectionPlan {
+  id: string;
+  company_id: string;
+  name_ar: string;
+  name_en?: string;
+  description?: string;
+  price: number;
+  currency: string;
+  duration_days: number;
+  is_active: boolean;
+  is_visible: boolean;
+}
+
+interface PaymentMethod {
+  id: string;
+  name_ar: string;
+  code: string;
+  instructions?: string;
+  account_name?: string;
+  account_identifier?: string;
+  display_order: number;
+}
+
+interface ProtectionRequestItem {
+  id: string;
+  customer_id: string;
+  customer_number_id: string;
+  company_id: string;
+  package_id: string;
+  payment_method_id: string;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  requested_price: number;
+  requested_currency: string;
+  requested_duration_days: number;
+  payment_transfer_reference?: string;
+  customer_note?: string;
+  rejection_reason?: string;
+  created_at: string;
+  phone_number?: string;
+  package_name?: string;
+  payment_method_name?: string;
+}
+
+interface ProtectionItem {
+  id: string;
+  customer_id: string;
+  customer_number_id: string;
+  company_id: string;
+  package_name_snapshot: string;
+  price_snapshot: number;
+  currency_snapshot: string;
+  duration_days_snapshot: number;
+  start_at: string;
+  end_at: string;
+  status: string;
+  phone_number?: string;
+}
+
 const KNOWN_OPERATORS: Record<string, { nameAr: string; code: string; bg: string; text: string }> = {
   '77': { nameAr: 'يمن موبايل', code: 'YM', bg: 'bg-rose-500/20', text: 'text-rose-400' },
   '78': { nameAr: 'يمن موبايل', code: 'YM', bg: 'bg-rose-500/20', text: 'text-rose-400' },
@@ -74,37 +141,66 @@ const KNOWN_OPERATORS: Record<string, { nameAr: string; code: string; bg: string
   '70': { nameAr: 'واي', code: 'Y', bg: 'bg-emerald-500/20', text: 'text-emerald-400' }
 };
 
+const DEFAULT_PLANS: ProtectionPlan[] = [
+  { id: 'p1', company_id: '4262d66c-f6b2-437b-9f45-02123e2306d4', name_ar: 'باقة الحماية الشهرية — يمن موبايل', price: 2500, currency: 'YER', duration_days: 30, is_active: true, is_visible: true },
+  { id: 'p2', company_id: '4262d66c-f6b2-437b-9f45-02123e2306d4', name_ar: 'باقة الحماية الربع سنوية — يمن موبايل', price: 7000, currency: 'YER', duration_days: 90, is_active: true, is_visible: true },
+  { id: 'p3', company_id: '193c9f07-2781-44e0-96f6-eead97fca93a', name_ar: 'باقة الحماية الشهرية — يو', price: 2500, currency: 'YER', duration_days: 30, is_active: true, is_visible: true },
+  { id: 'p4', company_id: 'cdeb5fe5-4733-4732-b678-9dd101f11d88', name_ar: 'باقة الحماية الشهرية — سبأفون', price: 2500, currency: 'YER', duration_days: 30, is_active: true, is_visible: true },
+  { id: 'p5', company_id: '69a82a6d-345f-44a1-b46a-33e8098b8c64', name_ar: 'باقة الحماية الشهرية — واي', price: 2500, currency: 'YER', duration_days: 30, is_active: true, is_visible: true }
+];
+
+const DEFAULT_PAYMENT_METHODS: PaymentMethod[] = [
+  { id: 'pm1', name_ar: 'حساب الكريمي (Kuraimi)', code: 'KURAIMI', account_identifier: '121456789', instructions: 'إيداع أو تحويل لحساب أمان في بنك الكريمي', display_order: 1 },
+  { id: 'pm2', name_ar: 'حساب القطيبي (Qutaibi)', code: 'QUTAIBI', account_identifier: '987654321', instructions: 'تحويل عبر بنك القطيبي الإسلامي', display_order: 2 },
+  { id: 'pm3', name_ar: 'محفظة ون كاش (OneCash)', code: 'ONECASH', account_identifier: '771234567', instructions: 'تحويل مباشر لمحفظة ون كاش', display_order: 3 },
+  { id: 'pm4', name_ar: 'محفظة جوالي (Jawali)', code: 'JAWALI', account_identifier: '781234567', instructions: 'تحويل فوري عبر تطبيق جوالي', display_order: 4 }
+];
+
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'device' | 'architecture' | 'logs'>('device');
+
+  // Customer State
+  const [customerNavTab, setCustomerNavTab] = useState<'numbers' | 'plans' | 'requests'>('numbers');
+  const [numbers, setNumbers] = useState<CustomerNumberItem[]>([]);
+  const [plans, setPlans] = useState<ProtectionPlan[]>(DEFAULT_PLANS);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(DEFAULT_PAYMENT_METHODS);
+  const [requests, setRequests] = useState<ProtectionRequestItem[]>([]);
+  const [protections, setProtections] = useState<ProtectionItem[]>([]);
+
+  // Add Number
+  const [isAddingNumber, setIsAddingNumber] = useState(false);
+  const [phoneInput, setPhoneInput] = useState('');
+  const [detectedOp, setDetectedOp] = useState<any>(null);
+
+  // Create Request Modal
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [targetNumber, setTargetNumber] = useState<CustomerNumberItem | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState('');
+  const [selectedPmId, setSelectedPmId] = useState('');
+  const [transferRef, setTransferRef] = useState('');
+  const [customerNote, setCustomerNote] = useState('');
+  const [conflictWarning, setConflictWarning] = useState<string | null>(null);
+
+  // Admin View State
+  const [adminViewMode, setAdminViewMode] = useState<'customer' | 'admin'>('customer');
+  const [pendingRequestsAdmin, setPendingRequestsAdmin] = useState<ProtectionRequestItem[]>([]);
+  const [rejectModalReq, setRejectModalReq] = useState<ProtectionRequestItem | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+
+  // General Feedback
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Auth Form State
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'device' | 'architecture' | 'logs'>('device');
 
-  // Customer Numbers State (Stage 2)
-  const [customerView, setCustomerView] = useState<'list' | 'add'>('list');
-  const [numbers, setNumbers] = useState<CustomerNumberItem[]>([]);
-  const [numbersLoading, setNumbersLoading] = useState(false);
-  const [phoneInput, setPhoneInput] = useState('');
-  const [detectedOp, setDetectedOp] = useState<{
-    prefix: string;
-    nameAr: string;
-    code: string;
-    isValid: boolean;
-    error?: string;
-  } | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterCode, setFilterCode] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [editingNumber, setEditingNumber] = useState<CustomerNumberItem | null>(null);
-  const [editNotesText, setEditNotesText] = useState('');
-
-  // 1. Session and Profile verification
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -123,7 +219,6 @@ export default function App() {
         fetchUserProfile(session.user.id);
       } else {
         setProfile(null);
-        setNumbers([]);
         setLoading(false);
       }
     });
@@ -141,6 +236,7 @@ export default function App() {
 
       if (!error && data) {
         setProfile(data as UserProfile);
+        if (data.user_type === 'admin') setAdminViewMode('admin');
       } else {
         setProfile({
           id: userId,
@@ -153,7 +249,7 @@ export default function App() {
           created_at: new Date().toISOString()
         });
       }
-      fetchCustomerNumbers(userId);
+      loadAllData(userId);
     } catch {
       // ignore
     } finally {
@@ -161,136 +257,115 @@ export default function App() {
     }
   };
 
-  const fetchCustomerNumbers = async (userId: string) => {
-    setNumbersLoading(true);
+  const loadAllData = async (userId: string) => {
+    // 1. Numbers
     try {
-      const { data, error } = await supabase
+      const { data: numData } = await supabase
         .from('customer_numbers')
         .select('*')
         .eq('customer_id', userId)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false });
 
-      if (!error && data) {
-        const enriched = (data as CustomerNumberItem[]).map((item) => {
-          const op = KNOWN_OPERATORS[item.detected_prefix] || {
-            nameAr: `بادئة ${item.detected_prefix}`,
-            code: 'OP'
-          };
-          return {
-            ...item,
-            company_name_ar: op.nameAr,
-            company_code: op.code
-          };
-        });
+      if (numData) {
+        const enriched = numData.map((item: any) => ({
+          ...item,
+          company_name_ar: KNOWN_OPERATORS[item.detected_prefix]?.nameAr || `بادئة ${item.detected_prefix}`,
+          company_code: KNOWN_OPERATORS[item.detected_prefix]?.code || 'OP'
+        }));
         setNumbers(enriched);
       }
-    } catch {
-      // ignore
-    } finally {
-      setNumbersLoading(false);
-    }
+    } catch {}
+
+    // 2. Plans & Payment Methods
+    try {
+      const { data: planData } = await supabase
+        .from('company_packages')
+        .select('*')
+        .eq('is_active', true)
+        .eq('is_visible', true)
+        .eq('is_deleted', false);
+      if (planData && planData.length) setPlans(planData);
+    } catch {}
+
+    try {
+      const { data: pmData } = await supabase
+        .from('payment_methods')
+        .select('*')
+        .eq('is_active', true)
+        .eq('is_deleted', false);
+      if (pmData && pmData.length) setPaymentMethods(pmData);
+    } catch {}
+
+    // 3. Protection Requests
+    try {
+      const { data: reqData } = await supabase
+        .from('protection_requests')
+        .select('*')
+        .eq('customer_id', userId)
+        .order('created_at', { ascending: false });
+      if (reqData) setRequests(reqData);
+    } catch {}
+
+    // 4. Protections
+    try {
+      const { data: protData } = await supabase
+        .from('protections')
+        .select('*')
+        .eq('customer_id', userId)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false });
+      if (protData) setProtections(protData);
+    } catch {}
+
+    // 5. Admin Pending Requests
+    try {
+      const { data: adminReqs } = await supabase
+        .from('protection_requests')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+      if (adminReqs) setPendingRequestsAdmin(adminReqs);
+    } catch {}
   };
 
   // Real-time phone detection (Stage 2)
-  const handlePhoneInputChange = async (raw: string) => {
+  const handlePhoneInputChange = (raw: string) => {
     const digits = raw.replace(/\D/g, '');
     if (digits.length > 9) return;
     setPhoneInput(digits);
-    setFeedback(null);
-
     if (digits.length >= 2) {
       const prefix = digits.substring(0, 2);
       const known = KNOWN_OPERATORS[prefix];
-
       if (known) {
         const isValid = digits.length === 9;
-        setDetectedOp({
-          prefix,
-          nameAr: known.nameAr,
-          code: known.code,
-          isValid,
-          error: isValid ? undefined : `طول الرقم غير مكتمل (${digits.length}/9 أرقام)`
-        });
+        setDetectedOp({ prefix, nameAr: known.nameAr, code: known.code, isValid });
       } else {
-        setDetectedOp({
-          prefix,
-          nameAr: 'شركة غير مدعومة',
-          code: 'UNKNOWN',
-          isValid: false,
-          error: `البادئة (${prefix}) غير مدعومة في نظام AMAN`
-        });
+        setDetectedOp({ prefix, nameAr: 'غير مدعوم', code: 'UNKNOWN', isValid: false });
       }
     } else {
       setDetectedOp(null);
     }
   };
 
-  // Submit Add Customer Number via RPC
   const handleAddNumber = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!detectedOp?.isValid) {
-      setFeedback({ type: 'error', message: 'يرجى إدخال رقم صحيح مكون من 9 أرقام يبدأ ببادئة مدعومة' });
-      return;
-    }
-
+    if (!detectedOp?.isValid) return;
     setActionLoading(true);
-    setFeedback(null);
-
     try {
       const { data, error } = await supabase.rpc('rpc_add_customer_number', {
         p_phone_number: phoneInput
       });
-
       if (error) throw error;
-
       const res = data as any;
       if (res?.success) {
-        setFeedback({
-          type: 'success',
-          message: 'تم حفظ الرقم بنجاح في حسابك دون إنشاء حماية تلقائيًا.'
-        });
+        setFeedback({ type: 'success', message: 'تم حفظ الرقم بنجاح دون إنشاء حماية تلقائياً.' });
         setPhoneInput('');
         setDetectedOp(null);
-        setCustomerView('list');
-        if (session?.user) {
-          fetchCustomerNumbers(session.user.id);
-        }
+        setIsAddingNumber(false);
+        if (session?.user) loadAllData(session.user.id);
       } else {
-        const errMap: Record<string, string> = {
-          DUPLICATE_OPERATION: 'هذا الرقم مسجل مسبقاً في حسابك',
-          COMPANY_NOT_FOUND: 'بادئة الرقم غير تابعة لأي شركة اتصالات مدعومة',
-          INVALID_PHONE_LENGTH: 'طول الرقم غير صحيح (يجب أن يكون 9 أرقام)',
-          INVALID_PHONE: 'صيغة الرقم غير صالحة',
-          FORBIDDEN: 'الحساب غير مؤهل لإضافة أرقام',
-          UNAUTHORIZED: 'يجب تسجيل الدخول'
-        };
-        const msg = errMap[res?.error_code] || res?.message || 'تعذر إضافة الرقم';
-        setFeedback({ type: 'error', message: msg });
-      }
-    } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || 'حدث خطأ أثناء حفظ الرقم' });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Edit notes
-  const handleSaveNotes = async () => {
-    if (!editingNumber) return;
-    setActionLoading(true);
-    try {
-      const { data, error } = await supabase.rpc('rpc_update_customer_number_notes', {
-        p_customer_number_id: editingNumber.id,
-        p_notes: editNotesText.trim()
-      });
-
-      if (!error && (data as any)?.success) {
-        setFeedback({ type: 'success', message: 'تم تحديث ملاحظات الرقم' });
-        setEditingNumber(null);
-        if (session?.user) fetchCustomerNumbers(session.user.id);
-      } else {
-        setFeedback({ type: 'error', message: 'فشل تحديث الملاحظات' });
+        setFeedback({ type: 'error', message: res?.message || res?.error_code || 'تعذر إضافة الرقم' });
       }
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.message || 'حدث خطأ' });
@@ -299,36 +374,116 @@ export default function App() {
     }
   };
 
-  // Soft delete number
-  const handleDeleteNumber = async (numberId: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذا الرقم من حسابك؟')) return;
-    setActionLoading(true);
-    try {
-      const { error } = await supabase
-        .from('customer_numbers')
-        .update({ is_deleted: true, status: 'inactive' })
-        .eq('id', numberId)
-        .eq('customer_id', session?.user?.id);
+  // Open Request Modal with Conflict Verification
+  const openCreateRequestModal = (num: CustomerNumberItem) => {
+    setTargetNumber(num);
+    const hasActive = protections.some((p) => p.customer_number_id === num.id && p.status === 'active');
+    const hasPending = requests.some((r) => r.customer_number_id === num.id && r.status === 'pending');
 
-      if (!error) {
-        setFeedback({ type: 'success', message: 'تم حذف الرقم بنجاح' });
-        if (session?.user) fetchCustomerNumbers(session.user.id);
+    if (hasActive) {
+      setConflictWarning('هذا الرقم محمي بالفعل بحماية نشطة ولا يحتاج لطلب حماية جديد.');
+    } else if (hasPending) {
+      setConflictWarning('يوجد طلب حماية قيد المراجعة (PENDING) لهذا الرقم حالياً.');
+    } else {
+      setConflictWarning(null);
+    }
+
+    const matchingPlans = plans.filter((p) => p.company_id === num.company_id);
+    setSelectedPlanId(matchingPlans[0]?.id || plans[0]?.id || '');
+    setSelectedPmId(paymentMethods[0]?.id || '');
+    setTransferRef('');
+    setCustomerNote('');
+    setShowRequestModal(true);
+  };
+
+  // Submit Protection Request via RPC
+  const handleSubmitProtectionRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (conflictWarning || !targetNumber || !selectedPlanId || !selectedPmId || !transferRef.trim()) return;
+
+    setActionLoading(true);
+    setFeedback(null);
+    try {
+      const { data, error } = await supabase.rpc('rpc_create_protection_request', {
+        p_customer_number_id: targetNumber.id,
+        p_package_id: selectedPlanId,
+        p_payment_method_id: selectedPmId,
+        p_transfer_reference: transferRef.trim(),
+        p_customer_note: customerNote.trim() || null
+      });
+
+      if (error) throw error;
+      const res = data as any;
+      if (res?.success) {
+        setFeedback({
+          type: 'success',
+          message: 'تم إرسال طلب الحماية بنجاح، وهو الآن بحالة (قيد المراجعة PENDING) لدى الإدارة.'
+        });
+        setShowRequestModal(false);
+        setCustomerNavTab('requests');
+        if (session?.user) loadAllData(session.user.id);
       } else {
-        setFeedback({ type: 'error', message: error.message });
+        setFeedback({ type: 'error', message: res?.message || res?.error_code || 'تعذر إرسال الطلب' });
       }
     } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message });
+      setFeedback({ type: 'error', message: err.message || 'حدث خطأ أثناء إرسال الطلب' });
     } finally {
       setActionLoading(false);
     }
   };
 
-  // Auth Submit
+  // Admin Actions: Approve Request
+  const handleApproveRequest = async (reqId: string) => {
+    setActionLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('rpc_approve_protection_request', {
+        p_request_id: reqId
+      });
+      if (error) throw error;
+      const res = data as any;
+      if (res?.success) {
+        setFeedback({ type: 'success', message: 'تم قبول طلب الحماية وتفعيل الحماية للرقم بنجاح.' });
+        if (session?.user) loadAllData(session.user.id);
+      } else {
+        setFeedback({ type: 'error', message: res?.message || 'فشل قبول الطلب' });
+      }
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.message || 'حدث خطأ' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Admin Actions: Reject Request
+  const handleRejectRequest = async () => {
+    if (!rejectModalReq || !rejectionReason.trim()) return;
+    setActionLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('rpc_reject_protection_request', {
+        p_request_id: rejectModalReq.id,
+        p_rejection_reason: rejectionReason.trim()
+      });
+      if (error) throw error;
+      const res = data as any;
+      if (res?.success) {
+        setFeedback({ type: 'success', message: 'تم رفض طلب الحماية وتوثيق السبب.' });
+        setRejectModalReq(null);
+        setRejectionReason('');
+        if (session?.user) loadAllData(session.user.id);
+      } else {
+        setFeedback({ type: 'error', message: res?.message || 'فشل رفض الطلب' });
+      }
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.message || 'حدث خطأ' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
     setActionLoading(true);
-
     try {
       if (authMode === 'signin') {
         const { error } = await supabase.auth.signInWithPassword({
@@ -341,20 +496,14 @@ export default function App() {
           email: email.trim(),
           password,
           options: {
-            data: {
-              full_name: fullName.trim(),
-              user_type: 'customer'
-            }
+            data: { full_name: fullName.trim(), user_type: 'customer' }
           }
         });
         if (error) throw error;
-        await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password
-        });
+        await supabase.auth.signInWithPassword({ email: email.trim(), password });
       }
     } catch (err: any) {
-      setAuthError(err.message || 'حدث خطأ في عملية المصادقة');
+      setAuthError(err.message || 'خطأ في المصادقة');
     } finally {
       setActionLoading(false);
     }
@@ -369,22 +518,10 @@ export default function App() {
     setActionLoading(false);
   };
 
-  // Filtered numbers
-  const filteredNumbers = numbers.filter((n) => {
-    const matchesSearch =
-      searchQuery.trim() === '' ||
-      n.phone_number.includes(searchQuery) ||
-      n.normalized_phone_number.includes(searchQuery) ||
-      (n.notes && n.notes.toLowerCase().includes(searchQuery.toLowerCase()));
-
-    const matchesFilter = filterCode === null || n.company_code === filterCode;
-    return matchesSearch && matchesFilter;
-  });
-
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans" dir="rtl">
       {/* Top Banner Header */}
-      <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+      <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur px-6 py-3 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-bold">
             <Shield className="w-6 h-6" />
@@ -393,50 +530,67 @@ export default function App() {
             <div className="flex items-center gap-2">
               <h1 className="text-lg font-bold text-white tracking-wide">AMAN.XZ1</h1>
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                المرحلة 2: Customer Identity & Phone Numbers
+                المرحلة 3: Protection Plans & Requests
               </span>
             </div>
             <p className="text-xs text-slate-400">
-              Kotlin Native + Jetpack Compose • Live Supabase RPCs & Data Binding
+              Kotlin Native + Jetpack Compose • Live RPC: rpc_create_protection_request / approve / reject
             </p>
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex items-center gap-2 bg-slate-900 p-1 rounded-xl border border-slate-800 text-sm">
-          <button
-            onClick={() => setActiveTab('device')}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-2 transition ${
-              activeTab === 'device'
-                ? 'bg-emerald-600 text-white font-medium'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Smartphone className="w-4 h-4" />
-            شاشة جهاز Android
-          </button>
-          <button
-            onClick={() => setActiveTab('architecture')}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-2 transition ${
-              activeTab === 'architecture'
-                ? 'bg-emerald-600 text-white font-medium'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            بنية المرحلة 2 (Kotlin)
-          </button>
-          <button
-            onClick={() => setActiveTab('logs')}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-2 transition ${
-              activeTab === 'logs'
-                ? 'bg-emerald-600 text-white font-medium'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Database className="w-4 h-4" />
-            فحص مسار البيانات
-          </button>
+        {/* View and Mode Selector */}
+        <div className="flex items-center gap-2">
+          {session && (
+            <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+              <button
+                onClick={() => setAdminViewMode('customer')}
+                className={`px-3 py-1.5 rounded-lg transition font-medium ${
+                  adminViewMode === 'customer' ? 'bg-emerald-600 text-white font-bold' : 'text-slate-400'
+                }`}
+              >
+                بوابة العميل
+              </button>
+              <button
+                onClick={() => setAdminViewMode('admin')}
+                className={`px-3 py-1.5 rounded-lg transition font-medium ${
+                  adminViewMode === 'admin' ? 'bg-amber-600 text-white font-bold' : 'text-slate-400'
+                }`}
+              >
+                لوحة الإدارة ({pendingRequestsAdmin.length})
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800 text-sm">
+            <button
+              onClick={() => setActiveTab('device')}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-2 transition ${
+                activeTab === 'device' ? 'bg-emerald-600 text-white font-medium' : 'text-slate-400'
+              }`}
+            >
+              <Smartphone className="w-4 h-4" />
+              جهاز Android
+            </button>
+            <button
+              onClick={() => setActiveTab('architecture')}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-2 transition ${
+                activeTab === 'architecture' ? 'bg-emerald-600 text-white font-medium' : 'text-slate-400'
+              }`}
+            >
+              <Layers className="w-4 h-4" />
+              بنية المرحلة 3
+            </button>
+            <button
+              onClick={() => setActiveTab('logs')}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-2 transition ${
+                activeTab === 'logs' ? 'bg-emerald-600 text-white font-medium' : 'text-slate-400'
+              }`}
+            >
+              <Database className="w-4 h-4" />
+              فحص المسار الحي
+            </button>
+          </div>
         </div>
       </header>
 
@@ -445,15 +599,15 @@ export default function App() {
         {activeTab === 'device' && (
           <div className="flex flex-col lg:flex-row items-center justify-center gap-8 max-w-5xl w-full">
             {/* Native Android Frame */}
-            <div className="w-[380px] h-[740px] bg-slate-950 rounded-[44px] p-3 shadow-2xl border-4 border-slate-700 relative flex flex-col overflow-hidden">
-              {/* Camera Notch */}
+            <div className="w-[390px] h-[750px] bg-slate-950 rounded-[44px] p-3 shadow-2xl border-4 border-slate-700 relative flex flex-col overflow-hidden">
+              {/* Notch */}
               <div className="absolute top-4 left-1/2 -translate-x-1/2 w-28 h-5 bg-slate-900 rounded-full z-30 flex items-center justify-center">
                 <div className="w-2.5 h-2.5 rounded-full bg-slate-950 border border-slate-800" />
               </div>
 
               {/* Android Screen Inner */}
               <div className="flex-1 bg-slate-900 rounded-[34px] overflow-hidden flex flex-col relative pt-7">
-                {/* Top Status Bar */}
+                {/* Status Bar */}
                 <div className="px-5 py-2 flex items-center justify-between text-[11px] text-slate-400 font-mono select-none">
                   <span>12:00</span>
                   <div className="flex items-center gap-1.5">
@@ -468,379 +622,347 @@ export default function App() {
                     <span className="text-xs text-slate-400 font-medium">جاري فحص الجلسة...</span>
                   </div>
                 ) : session && profile ? (
-                  /* Authenticated Customer View with Phone Numbers */
-                  <div className="flex-1 flex flex-col overflow-hidden">
-                    {/* Customer Top Bar */}
-                    <div className="p-3 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                          <UserIcon className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-white truncate max-w-[140px]">
-                            {profile.full_name || profile.email}
+                  adminViewMode === 'admin' ? (
+                    /* ADMIN PORTAL SCREEN */
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                      <div className="p-3 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs">
+                            ADM
                           </div>
-                          <div className="text-[10px] text-slate-400 font-mono">
-                            {numbers.length} أرقام مسجلة
+                          <div>
+                            <div className="text-xs font-bold text-white">إدارة طلبات الحماية</div>
+                            <div className="text-[10px] text-amber-400 font-mono">
+                              {pendingRequestsAdmin.length} طلبات قيد الانتظار (PENDING)
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-1">
                         <button
-                          onClick={() => {
-                            if (session?.user) fetchCustomerNumbers(session.user.id);
-                          }}
-                          className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
-                          title="تحديث"
+                          onClick={() => { if (session?.user) loadAllData(session.user.id); }}
+                          className="p-1.5 rounded-lg bg-slate-800 text-slate-300"
                         >
                           <RefreshCw className="w-3.5 h-3.5" />
                         </button>
-                        <button
-                          onClick={handleSignOut}
-                          className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20"
-                          title="خروج"
-                        >
-                          <LogOut className="w-3.5 h-3.5" />
-                        </button>
+                      </div>
+
+                      {feedback && (
+                        <div className={`mx-3 mt-2 p-2 rounded-xl text-xs flex items-center justify-between ${
+                          feedback.type === 'success' ? 'bg-emerald-950/60 border border-emerald-500/40 text-emerald-300' : 'bg-rose-950/60 border border-rose-500/40 text-rose-300'
+                        }`}>
+                          <span className="text-[11px]">{feedback.message}</span>
+                          <button onClick={() => setFeedback(null)}><X className="w-3.5 h-3.5" /></button>
+                        </div>
+                      )}
+
+                      {/* Admin Pending Requests List */}
+                      <div className="flex-1 p-3 overflow-y-auto space-y-2.5">
+                        {pendingRequestsAdmin.length === 0 ? (
+                          <div className="py-12 text-center text-slate-500 text-xs">
+                            <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2 opacity-50" />
+                            <div className="font-bold text-slate-300">لا توجد طلبات معلقة حالياً</div>
+                            <p className="text-[10px] mt-1 text-slate-500">كافة طلبات الحماية تم مراجعتها واعتمادها.</p>
+                          </div>
+                        ) : (
+                          pendingRequestsAdmin.map((req) => (
+                            <div key={req.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-3 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-mono text-slate-400">طلب: #{req.id.slice(0, 8)}</span>
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">
+                                  PENDING
+                                </span>
+                              </div>
+
+                              <div className="text-xs text-white">
+                                <span className="font-bold block text-emerald-400 font-mono">
+                                  {req.requested_price} {req.requested_currency} ({req.requested_duration_days} يوماً)
+                                </span>
+                                <span className="text-[11px] text-slate-400">
+                                  مرجع الحوالة: <strong className="text-white font-mono">{req.payment_transfer_reference || '-'}</strong>
+                                </span>
+                              </div>
+
+                              {req.customer_note && (
+                                <div className="text-[10px] text-slate-400 bg-slate-900 p-1.5 rounded-lg">
+                                  ملاحظة: {req.customer_note}
+                                </div>
+                              )}
+
+                              <div className="flex items-center gap-2 pt-1">
+                                <button
+                                  onClick={() => setRejectModalReq(req)}
+                                  disabled={actionLoading}
+                                  className="flex-1 py-1.5 rounded-xl border border-rose-500/40 text-rose-400 hover:bg-rose-950/30 text-xs font-bold transition flex items-center justify-center gap-1"
+                                >
+                                  <XCircle className="w-3.5 h-3.5" />
+                                  <span>رفض الطلب</span>
+                                </button>
+                                <button
+                                  onClick={() => handleApproveRequest(req.id)}
+                                  disabled={actionLoading}
+                                  className="flex-1 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center justify-center gap-1"
+                                >
+                                  <CheckCircle className="w-3.5 h-3.5" />
+                                  <span>قبول واعتماد</span>
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        )}
                       </div>
                     </div>
-
-                    {/* Feedback Toast */}
-                    {feedback && (
-                      <div
-                        className={`mx-3 mt-2 p-2 rounded-xl text-xs flex items-center justify-between ${
-                          feedback.type === 'success'
-                            ? 'bg-emerald-950/60 border border-emerald-500/40 text-emerald-300'
-                            : 'bg-rose-950/60 border border-rose-500/40 text-rose-300'
-                        }`}
-                      >
-                        <span className="text-[11px] leading-tight">{feedback.message}</span>
-                        <button onClick={() => setFeedback(null)}>
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )}
-
-                    {/* View Switcher: Add Number Form vs Numbers List */}
-                    {customerView === 'add' ? (
-                      /* Add Phone Number Screen */
-                      <div className="flex-1 p-4 overflow-y-auto flex flex-col">
-                        <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
-                          <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
-                            <Phone className="w-4 h-4 text-emerald-400" />
-                            <span>إضافة رقم هاتف جديد</span>
-                          </h3>
+                  ) : (
+                    /* CUSTOMER PORTAL SCREEN */
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                      {/* Customer Top Bar */}
+                      <div className="p-3 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                            <UserIcon className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-white truncate max-w-[130px]">
+                              {profile.full_name || profile.email}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-mono">
+                              {protections.length} حماية نشطة • {requests.length} طلبات
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
                           <button
-                            onClick={() => {
-                              setCustomerView('list');
-                              setPhoneInput('');
-                              setDetectedOp(null);
-                            }}
-                            className="text-[11px] text-slate-400 hover:text-white"
+                            onClick={() => { if (session?.user) loadAllData(session.user.id); }}
+                            className="p-1.5 rounded-lg bg-slate-800 text-slate-300"
                           >
-                            إلغاء
+                            <RefreshCw className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={handleSignOut} className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400">
+                            <LogOut className="w-3.5 h-3.5" />
                           </button>
                         </div>
+                      </div>
 
-                        <form onSubmit={handleAddNumber} className="space-y-3">
-                          <div>
-                            <label className="block text-[11px] text-slate-300 mb-1">
-                              أدخل رقم الهاتف المحمول (اليمن)
-                            </label>
-                            <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 focus-within:border-emerald-500">
-                              <span className="text-xs font-mono font-bold text-slate-400 pl-2 border-l border-slate-800">
-                                🇾🇪 +967
-                              </span>
+                      {/* Customer Top Navigation Tabs */}
+                      <div className="flex items-center border-b border-slate-800 bg-slate-950 text-[11px] font-bold">
+                        <button
+                          onClick={() => setCustomerNavTab('numbers')}
+                          className={`flex-1 py-2 text-center transition border-b-2 ${
+                            customerNavTab === 'numbers' ? 'border-emerald-500 text-emerald-400 bg-slate-900/50' : 'border-transparent text-slate-400'
+                          }`}
+                        >
+                          أرقامي ({numbers.length})
+                        </button>
+                        <button
+                          onClick={() => setCustomerNavTab('requests')}
+                          className={`flex-1 py-2 text-center transition border-b-2 ${
+                            customerNavTab === 'requests' ? 'border-emerald-500 text-emerald-400 bg-slate-900/50' : 'border-transparent text-slate-400'
+                          }`}
+                        >
+                          الطلبات والحمايات
+                        </button>
+                        <button
+                          onClick={() => setCustomerNavTab('plans')}
+                          className={`flex-1 py-2 text-center transition border-b-2 ${
+                            customerNavTab === 'plans' ? 'border-emerald-500 text-emerald-400 bg-slate-900/50' : 'border-transparent text-slate-400'
+                          }`}
+                        >
+                          دليل الباقات
+                        </button>
+                      </div>
+
+                      {/* Toast Feedback */}
+                      {feedback && (
+                        <div className={`mx-3 mt-2 p-2 rounded-xl text-xs flex items-center justify-between ${
+                          feedback.type === 'success' ? 'bg-emerald-950/60 border border-emerald-500/40 text-emerald-300' : 'bg-rose-950/60 border border-rose-500/40 text-rose-300'
+                        }`}>
+                          <span className="text-[11px] leading-tight">{feedback.message}</span>
+                          <button onClick={() => setFeedback(null)}><X className="w-3.5 h-3.5" /></button>
+                        </div>
+                      )}
+
+                      {/* Tab 1: Numbers & Request Protection Button */}
+                      {customerNavTab === 'numbers' && (
+                        <div className="flex-1 p-3 overflow-y-auto flex flex-col">
+                          {isAddingNumber ? (
+                            /* Add Number Form */
+                            <form onSubmit={handleAddNumber} className="space-y-3 bg-slate-950 border border-slate-800 rounded-2xl p-3 mb-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-white">إضافة رقم هاتف جديد</span>
+                                <button onClick={() => setIsAddingNumber(false)} className="text-[11px] text-slate-400">إلغاء</button>
+                              </div>
                               <input
                                 type="text"
-                                required
                                 value={phoneInput}
                                 onChange={(e) => handlePhoneInputChange(e.target.value)}
                                 placeholder="77XXXXXXX"
-                                className="w-full bg-transparent px-2 text-xs font-mono font-bold text-white focus:outline-none"
+                                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono font-bold text-white"
                               />
-                              <span className="text-[10px] text-slate-500 font-mono">
-                                {phoneInput.length}/9
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Operator Detection Card */}
-                          {detectedOp && (
-                            <div
-                              className={`p-2.5 rounded-xl border text-xs flex items-center justify-between ${
-                                detectedOp.isValid
-                                  ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
-                                  : 'bg-slate-950 border-slate-800 text-slate-300'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                    KNOWN_OPERATORS[detectedOp.prefix]?.bg || 'bg-slate-800'
-                                  } ${KNOWN_OPERATORS[detectedOp.prefix]?.text || 'text-slate-400'}`}
-                                >
-                                  {detectedOp.nameAr}
-                                </span>
-                                <span className="text-[11px]">بادئة: {detectedOp.prefix}</span>
-                              </div>
-                              {detectedOp.isValid ? (
-                                <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
-                                  <Check className="w-3.5 h-3.5" />
-                                  <span>صالح</span>
-                                </span>
-                              ) : (
-                                <span className="text-[10px] text-rose-400">
-                                  {detectedOp.error || 'غير مكتمل'}
-                                </span>
+                              {detectedOp && (
+                                <div className="text-[10px] flex items-center justify-between">
+                                  <span className="text-emerald-400">{detectedOp.nameAr}</span>
+                                  <span>{detectedOp.isValid ? 'رقم صالح' : 'غير مكتمل'}</span>
+                                </div>
                               )}
+                              <button
+                                type="submit"
+                                disabled={actionLoading || !detectedOp?.isValid}
+                                className="w-full py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold"
+                              >
+                                حفظ الرقم
+                              </button>
+                            </form>
+                          ) : (
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-bold text-white">أرقام الهواتف المسجلة</span>
+                              <button
+                                onClick={() => setIsAddingNumber(true)}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-bold flex items-center gap-1"
+                              >
+                                <Plus className="w-3 h-3" />
+                                <span>إضافة رقم</span>
+                              </button>
                             </div>
                           )}
 
-                          {/* AMAN Reference Notice */}
-                          <div className="p-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-[11px] text-slate-400 leading-relaxed flex items-start gap-2">
-                            <Info className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
-                            <span>
-                              وفق المرجع: إضافة الرقم تؤدي إلى حفظه فقط في حسابك دون إنشاء حماية تلقائيًا.
-                            </span>
-                          </div>
-
-                          <button
-                            type="submit"
-                            disabled={actionLoading || !detectedOp?.isValid}
-                            className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-xs font-bold text-white transition flex items-center justify-center gap-2 mt-4"
-                          >
-                            {actionLoading ? (
-                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <>
-                                <Check className="w-4 h-4" />
-                                <span>حفظ الرقم في الحساب</span>
-                              </>
-                            )}
-                          </button>
-                        </form>
-                      </div>
-                    ) : (
-                      /* Customer Numbers List View */
-                      <div className="flex-1 p-3 flex flex-col overflow-hidden">
-                        {/* Action Header */}
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-bold text-white">أرقام هواتفي</span>
-                          <button
-                            onClick={() => {
-                              setCustomerView('add');
-                              setPhoneInput('');
-                              setDetectedOp(null);
-                            }}
-                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 shadow"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>إضافة رقم</span>
-                          </button>
-                        </div>
-
-                        {/* Search & Operator Chips */}
-                        <div className="mb-2 space-y-1.5">
-                          <div className="relative">
-                            <input
-                              type="text"
-                              value={searchQuery}
-                              onChange={(e) => setSearchQuery(e.target.value)}
-                              placeholder="بحث في الأرقام أو الملاحظات..."
-                              className="w-full bg-slate-950 border border-slate-800 rounded-xl py-1.5 pr-7 pl-2 text-[11px] text-white focus:outline-none focus:border-emerald-500"
-                            />
-                            <Search className="w-3.5 h-3.5 text-slate-500 absolute top-2 right-2" />
-                          </div>
-
-                          <div className="flex items-center gap-1 overflow-x-auto pb-1 text-[10px]">
-                            <button
-                              onClick={() => setFilterCode(null)}
-                              className={`px-2 py-0.5 rounded-full font-medium transition ${
-                                filterCode === null
-                                  ? 'bg-slate-200 text-slate-900 font-bold'
-                                  : 'bg-slate-950 text-slate-400'
-                              }`}
-                            >
-                              الكل
-                            </button>
-                            <button
-                              onClick={() => setFilterCode('YM')}
-                              className={`px-2 py-0.5 rounded-full font-medium transition ${
-                                filterCode === 'YM'
-                                  ? 'bg-rose-500 text-white font-bold'
-                                  : 'bg-slate-950 text-slate-400'
-                              }`}
-                            >
-                              يمن موبايل
-                            </button>
-                            <button
-                              onClick={() => setFilterCode('YOU')}
-                              className={`px-2 py-0.5 rounded-full font-medium transition ${
-                                filterCode === 'YOU'
-                                  ? 'bg-amber-500 text-slate-900 font-bold'
-                                  : 'bg-slate-950 text-slate-400'
-                              }`}
-                            >
-                              يو
-                            </button>
-                            <button
-                              onClick={() => setFilterCode('SABAFON')}
-                              className={`px-2 py-0.5 rounded-full font-medium transition ${
-                                filterCode === 'SABAFON'
-                                  ? 'bg-blue-500 text-white font-bold'
-                                  : 'bg-slate-950 text-slate-400'
-                              }`}
-                            >
-                              سبأفون
-                            </button>
-                            <button
-                              onClick={() => setFilterCode('Y')}
-                              className={`px-2 py-0.5 rounded-full font-medium transition ${
-                                filterCode === 'Y'
-                                  ? 'bg-emerald-500 text-white font-bold'
-                                  : 'bg-slate-950 text-slate-400'
-                              }`}
-                            >
-                              واي
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Numbers Scroll List */}
-                        <div className="flex-1 overflow-y-auto space-y-2 pr-0.5">
-                          {numbersLoading ? (
-                            <div className="py-8 text-center text-xs text-slate-500 flex flex-col items-center gap-2">
-                              <RefreshCw className="w-5 h-5 animate-spin text-emerald-400" />
-                              <span>جاري تحميل الأرقام...</span>
-                            </div>
-                          ) : filteredNumbers.length === 0 ? (
-                            <div className="py-8 text-center bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4">
-                              <PhoneCall className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-                              <div className="text-xs font-bold text-slate-300">
-                                {numbers.length === 0
-                                  ? 'لا توجد أرقام مسجلة حتى الآن'
-                                  : 'لا توجد نتائج مطابقة'}
+                          <div className="space-y-2 flex-1">
+                            {numbers.length === 0 ? (
+                              <div className="py-10 text-center text-slate-500 text-xs">
+                                لا توجد أرقام مسجلة. اضغط "إضافة رقم" للبدء.
                               </div>
-                              <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">
-                                {numbers.length === 0
-                                  ? 'أضف أول رقم هاتف لبدء إدارته وحمايته وفق النظام.'
-                                  : 'جرب تغيير كلمة البحث أو إزالة التصفية.'}
-                              </p>
-                              {numbers.length === 0 && (
-                                <button
-                                  onClick={() => setCustomerView('add')}
-                                  className="mt-3 px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-[11px] font-bold inline-flex items-center gap-1"
-                                >
-                                  <Plus className="w-3.5 h-3.5" />
-                                  <span>إضافة رقمك الآن</span>
-                                </button>
-                              )}
-                            </div>
-                          ) : (
-                            filteredNumbers.map((num) => {
-                              const op = KNOWN_OPERATORS[num.detected_prefix] || {
-                                nameAr: 'مشغل',
-                                bg: 'bg-slate-800',
-                                text: 'text-slate-300'
-                              };
+                            ) : (
+                              numbers.map((num) => {
+                                const hasActive = protections.some((p) => p.customer_number_id === num.id && p.status === 'active');
+                                const hasPending = requests.some((r) => r.customer_number_id === num.id && r.status === 'pending');
 
-                              return (
-                                <div
-                                  key={num.id}
-                                  className="bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl p-2.5 transition flex items-center justify-between"
-                                >
-                                  <div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-mono font-bold text-xs text-white">
-                                        {num.normalized_phone_number}
-                                      </span>
-                                      <span
-                                        className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${op.bg} ${op.text}`}
-                                      >
-                                        {num.company_name_ar || op.nameAr}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 font-mono">
-                                      <span>بادئة: {num.detected_prefix}</span>
-                                      {num.notes && (
-                                        <span className="text-slate-400 font-sans truncate max-w-[120px]">
-                                          • {num.notes}
+                                return (
+                                  <div key={num.id} className="bg-slate-950 border border-slate-800 rounded-xl p-2.5 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-mono font-bold text-xs text-white">
+                                          {num.normalized_phone_number}
                                         </span>
+                                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-300">
+                                          {num.company_name_ar}
+                                        </span>
+                                      </div>
+                                      {hasActive ? (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 flex items-center gap-1">
+                                          <Shield className="w-3 h-3" />
+                                          <span>محمي</span>
+                                        </span>
+                                      ) : hasPending ? (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">
+                                          طلب قيد المراجعة
+                                        </span>
+                                      ) : (
+                                        <span className="text-[9px] text-slate-500">غير محمي</span>
                                       )}
                                     </div>
-                                  </div>
 
-                                  <div className="flex items-center gap-1">
+                                    {/* Action to Request Protection */}
                                     <button
-                                      onClick={() => {
-                                        setEditingNumber(num);
-                                        setEditNotesText(num.notes || '');
-                                      }}
-                                      className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
-                                      title="تعديل الملاحظات"
+                                      onClick={() => openCreateRequestModal(num)}
+                                      className="w-full py-1.5 rounded-lg bg-emerald-600/20 border border-emerald-500/40 hover:bg-emerald-600/30 text-emerald-300 text-xs font-bold transition flex items-center justify-center gap-1.5"
                                     >
-                                      <Edit3 className="w-3.5 h-3.5" />
+                                      <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                                      <span>طلب باقة حماية لهذا الرقم</span>
                                     </button>
-                                    <button
-                                      onClick={() => handleDeleteNumber(num.id)}
-                                      className="p-1 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-950/40"
-                                      title="حذف الرقم"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tab 2: Requests & Protections Status */}
+                      {customerNavTab === 'requests' && (
+                        <div className="flex-1 p-3 overflow-y-auto space-y-3">
+                          {/* Active Protections */}
+                          <div>
+                            <h4 className="text-xs font-bold text-white mb-2 flex items-center gap-1.5">
+                              <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>الحمايات النشطة ({protections.length})</span>
+                            </h4>
+                            {protections.length === 0 ? (
+                              <div className="p-3 bg-slate-950/60 rounded-xl text-center text-[11px] text-slate-500">
+                                لا توجد حمايات نشطة حالياً.
+                              </div>
+                            ) : (
+                              protections.map((p) => (
+                                <div key={p.id} className="p-2.5 bg-emerald-950/30 border border-emerald-500/30 rounded-xl mb-1.5">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="font-bold text-emerald-300">{p.package_name_snapshot}</span>
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">ACTIVE</span>
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 mt-1 font-mono">
+                                    صالح حتى: {p.end_at ? p.end_at.slice(0, 10) : '-'}
                                   </div>
                                 </div>
-                              );
-                            })
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Edit Notes Modal Dialog */}
-                    {editingNumber && (
-                      <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-40 flex items-center justify-center p-4">
-                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 w-full max-w-[320px] shadow-2xl">
-                          <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
-                            <span className="text-xs font-bold text-white">تعديل ملاحظة الرقم</span>
-                            <button onClick={() => setEditingNumber(null)}>
-                              <X className="w-4 h-4 text-slate-400" />
-                            </button>
+                              ))
+                            )}
                           </div>
 
-                          <div className="mb-3 text-xs font-mono font-bold text-emerald-400">
-                            {editingNumber.normalized_phone_number} ({editingNumber.company_name_ar})
-                          </div>
+                          {/* Submitted Requests */}
+                          <div>
+                            <h4 className="text-xs font-bold text-white mb-2 flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5 text-amber-400" />
+                              <span>طلبات الحماية المقدمة ({requests.length})</span>
+                            </h4>
+                            {requests.length === 0 ? (
+                              <div className="p-3 bg-slate-950/60 rounded-xl text-center text-[11px] text-slate-500">
+                                لا توجد طلبات سابقة.
+                              </div>
+                            ) : (
+                              requests.map((r) => {
+                                const [bg, text, label] = r.status === 'pending'
+                                  ? ['bg-amber-500/20', 'text-amber-400', 'قيد المراجعة PENDING']
+                                  : r.status === 'approved'
+                                  ? ['bg-emerald-500/20', 'text-emerald-400', 'معتمد APPROVED']
+                                  : ['bg-rose-500/20', 'text-rose-400', 'مرفوض REJECTED'];
 
-                          <textarea
-                            value={editNotesText}
-                            onChange={(e) => setEditNotesText(e.target.value)}
-                            placeholder="اكتب ملاحظة للرقم (مثل: رقم العمل، رقم الوالد...)"
-                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-emerald-500 h-20"
-                          />
-
-                          <div className="flex justify-end gap-2 mt-3">
-                            <button
-                              onClick={() => setEditingNumber(null)}
-                              className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-xs"
-                            >
-                              إلغاء
-                            </button>
-                            <button
-                              onClick={handleSaveNotes}
-                              disabled={actionLoading}
-                              className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold"
-                            >
-                              {actionLoading ? 'جاري الحفظ...' : 'حفظ'}
-                            </button>
+                                return (
+                                  <div key={r.id} className="p-2.5 bg-slate-950 border border-slate-800 rounded-xl mb-1.5 space-y-1">
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="font-bold text-white">{r.requested_price} {r.requested_currency}</span>
+                                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${bg} ${text}`}>{label}</span>
+                                    </div>
+                                    <div className="text-[10px] text-slate-400 font-mono">
+                                      مرجع التحويل: {r.payment_transfer_reference || '-'}
+                                    </div>
+                                    {r.rejection_reason && (
+                                      <div className="text-[10px] text-rose-400 bg-rose-950/30 p-1 rounded">
+                                        سبب الرفض: {r.rejection_reason}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })
+                            )}
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
+                      )}
+
+                      {/* Tab 3: Plans Catalog */}
+                      {customerNavTab === 'plans' && (
+                        <div className="flex-1 p-3 overflow-y-auto space-y-2">
+                          <span className="text-xs font-bold text-white block mb-1">دليل باقات الحماية المعتمدة</span>
+                          {plans.map((pl) => (
+                            <div key={pl.id} className="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
+                              <div>
+                                <h5 className="text-xs font-bold text-white">{pl.name_ar}</h5>
+                                <span className="text-[10px] text-slate-400 block mt-0.5">المدة: {pl.duration_days} يوماً</span>
+                              </div>
+                              <span className="text-xs font-bold font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2 py-1 rounded-lg">
+                                {pl.price} {pl.currency}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
                 ) : (
-                  /* Auth Screen (Login / Register) */
+                  /* Auth Form */
                   <div className="flex-1 p-5 flex flex-col justify-center">
                     <div className="text-center mb-6">
                       <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto mb-2">
@@ -850,247 +972,244 @@ export default function App() {
                       <p className="text-xs text-slate-400">خدمة تجارية لحماية أرقام الهاتف المحمول</p>
                     </div>
 
-                    {authError && (
-                      <div className="mb-4 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 shrink-0" />
-                        <span>{authError}</span>
-                      </div>
-                    )}
-
                     <form onSubmit={handleAuthSubmit} className="space-y-3">
                       {authMode === 'signup' && (
-                        <div>
-                          <label className="block text-[11px] text-slate-400 mb-1">الاسم الكامل</label>
-                          <input
-                            type="text"
-                            required
-                            value={fullName}
-                            onChange={(e) => setFullName(e.target.value)}
-                            placeholder="محمد علي"
-                            className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-emerald-500"
-                          />
-                        </div>
+                        <input
+                          type="text"
+                          required
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          placeholder="الاسم الكامل"
+                          className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white"
+                        />
                       )}
-
-                      <div>
-                        <label className="block text-[11px] text-slate-400 mb-1">البريد الإلكتروني</label>
-                        <input
-                          type="email"
-                          required
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="user@example.com"
-                          className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-emerald-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] text-slate-400 mb-1">كلمة المرور</label>
-                        <input
-                          type="password"
-                          required
-                          minLength={6}
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          placeholder="••••••••"
-                          className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-emerald-500"
-                        />
-                      </div>
-
+                      <input
+                        type="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="البريد الإلكتروني"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white"
+                      />
+                      <input
+                        type="password"
+                        required
+                        minLength={6}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="كلمة المرور"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white"
+                      />
                       <button
                         type="submit"
                         disabled={actionLoading}
-                        className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-xs text-white transition flex items-center justify-center gap-2 mt-4"
+                        className="w-full py-2.5 rounded-xl bg-emerald-600 font-bold text-xs text-white"
                       >
-                        {actionLoading ? (
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                        ) : authMode === 'signin' ? (
-                          <>
-                            <LogIn className="w-4 h-4" />
-                            <span>تسجيل الدخول</span>
-                          </>
-                        ) : (
-                          <>
-                            <UserIcon className="w-4 h-4" />
-                            <span>إنشاء حساب عميل جديد</span>
-                          </>
-                        )}
+                        {authMode === 'signin' ? 'تسجيل الدخول' : 'إنشاء حساب جديد'}
                       </button>
                     </form>
-
-                    <div className="mt-4 text-center">
-                      <button
-                        onClick={() => {
-                          setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
-                          setAuthError(null);
-                        }}
-                        className="text-xs text-emerald-400 hover:underline"
-                      >
-                        {authMode === 'signin'
-                          ? 'ليس لديك حساب؟ إنشاء حساب عميل'
-                          : 'لديك حساب بالفعل؟ تسجيل الدخول'}
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
+                      className="mt-4 text-xs text-emerald-400 text-center"
+                    >
+                      {authMode === 'signin' ? 'ليس لديك حساب؟ إنشاء حساب' : 'لديك حساب؟ تسجيل الدخول'}
+                    </button>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Stage 2 Side Architecture Panel */}
+            {/* Side Architecture Overview for Stage 3 */}
             <div className="flex-1 max-w-lg space-y-4">
               <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5">
                 <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm mb-3">
                   <CheckCircle2 className="w-5 h-5" />
-                  <span>المرحلة 2: هوية العميل وأرقام الهواتف (مكتملة ومربوطة)</span>
+                  <span>المرحلة 3: باقات الحماية ودورة طلبات الحماية (مكتملة وموثقة)</span>
                 </div>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  تم تنفيذ نماذج Domain و Data، ومستودعات العميل وأرقام الهواتف، وخدمة التحقق من البادئة المعتمدة واستنتاج شركة الاتصالات، وربط إضافة الرقم بالإجراء الموثوق <code className="text-emerald-400 font-mono">rpc_add_customer_number</code> بحيث يؤدي إلى حفظه فقط دون إنشاء حماية تلقائيًا.
+                  تم بناء دورة طلب الحماية المتكاملة بالكامل: فحص التعارضات، اختيار باقة المشغل، إدخال مرجع الحوالة اليدوية، إرسال الطلب بحالة PENDING عبر <code className="text-emerald-400 font-mono">rpc_create_protection_request</code>، ومراجعة واعتماد الطلب من قبل المشرف عبر <code className="text-emerald-400 font-mono">rpc_approve_protection_request</code> لتفعيل الحماية الفورية وإنشاء مهام الحماية وسجل المعاملة.
                 </p>
 
                 <div className="grid grid-cols-2 gap-2 mt-4 text-xs font-mono">
                   <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-                    <span className="text-slate-400 block text-[10px]">Trusted RPC</span>
-                    <span className="text-emerald-400 truncate block">rpc_add_customer_number</span>
+                    <span className="text-slate-400 block text-[10px]">Create RPC</span>
+                    <span className="text-emerald-400 truncate block">rpc_create_protection_request</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-                    <span className="text-slate-400 block text-[10px]">Detection RPC</span>
-                    <span className="text-emerald-400 truncate block">detect_company_from_phone</span>
+                    <span className="text-slate-400 block text-[10px]">Approve RPC</span>
+                    <span className="text-emerald-400 truncate block">rpc_approve_protection_request</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-                    <span className="text-slate-400 block text-[10px]">Table Target</span>
-                    <span className="text-slate-200">public.customer_numbers</span>
+                    <span className="text-slate-400 block text-[10px]">Reject RPC</span>
+                    <span className="text-rose-400 truncate block">rpc_reject_protection_request</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
-                    <span className="text-slate-400 block text-[10px]">Auto Protection</span>
-                    <span className="text-amber-400">None (Save Only)</span>
+                    <span className="text-slate-400 block text-[10px]">Status Flow</span>
+                    <span className="text-amber-400">PENDING → APPROVED</span>
                   </div>
                 </div>
               </div>
 
-              {/* Supported Companies Info */}
+              {/* Conflict Prevention Card */}
               <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5">
-                <h3 className="text-xs font-bold text-white mb-2">شركات الاتصالات والبادئات المعتمدة:</h3>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between">
-                    <span className="font-bold text-rose-300">يمن موبايل</span>
-                    <span className="font-mono text-[10px] text-rose-400">77, 78 (9 أرقام)</span>
-                  </div>
-                  <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between">
-                    <span className="font-bold text-amber-300">يو للاتصالات</span>
-                    <span className="font-mono text-[10px] text-amber-400">73 (9 أرقام)</span>
-                  </div>
-                  <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-between">
-                    <span className="font-bold text-blue-300">سبأفون</span>
-                    <span className="font-mono text-[10px] text-blue-400">71 (9 أرقام)</span>
-                  </div>
-                  <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
-                    <span className="font-bold text-emerald-300">واي للاتصالات</span>
-                    <span className="font-mono text-[10px] text-emerald-400">70 (9 أرقام)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'architecture' && (
-          <div className="max-w-4xl w-full bg-slate-950 border border-slate-800 rounded-2xl p-6">
-            <h2 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-              <FolderGit2 className="w-5 h-5 text-emerald-400" />
-              <span>ملفات وحزم المرحلة 2 في مشروع Android الأصلي</span>
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
-              <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
-                <span className="text-emerald-400 font-bold block text-sm">📁 domain/models/</span>
-                <p className="text-slate-400 text-[11px] font-sans">نماذج النطاق النظيفة الخالية من التبعيات:</p>
-                <ul className="text-slate-300 space-y-1 pl-4 list-disc">
-                  <li>User.kt & Customer.kt (كيان العميل)</li>
-                  <li>CustomerNumber.kt (كيان الرقم وتنسيقه)</li>
-                  <li>Company.kt (كيان شركة الاتصالات)</li>
-                </ul>
-              </div>
-
-              <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
-                <span className="text-emerald-400 font-bold block text-sm">📁 data/repository/ & service/</span>
-                <p className="text-slate-400 text-[11px] font-sans">مستودعات البيانات وخدمة فحص الأرقام:</p>
-                <ul className="text-slate-300 space-y-1 pl-4 list-disc">
-                  <li>CustomerRepository.kt (بيانات العميل)</li>
-                  <li>CustomerNumberRepository.kt (إضافة، تعديل، حذف)</li>
-                  <li>PhoneValidationService.kt (التحقق والبادئات)</li>
-                  <li>CustomerNumberDto.kt & CompanyDto.kt</li>
-                </ul>
-              </div>
-
-              <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
-                <span className="text-emerald-400 font-bold block text-sm">📁 presentation/customer/</span>
-                <p className="text-slate-400 text-[11px] font-sans">واجهات شاشات العميل ومكوناتها:</p>
-                <ul className="text-slate-300 space-y-1 pl-4 list-disc">
-                  <li>CustomerViewModel.kt & CustomerUiState.kt</li>
-                  <li>screens/CustomerNumbersScreen.kt</li>
-                  <li>screens/AddNumberScreen.kt</li>
-                  <li>components/PhoneInputField.kt</li>
-                  <li>components/CompanyBadge.kt & NumberItemCard.kt</li>
-                </ul>
-              </div>
-
-              <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
-                <span className="text-emerald-400 font-bold block text-sm">📁 navigation/ & app/</span>
-                <p className="text-slate-400 text-[11px] font-sans">ربط التنقل والتسجيل المركزي:</p>
-                <ul className="text-slate-300 space-y-1 pl-4 list-disc">
-                  <li>AmanDestination.kt (CustomerNumbers, AddNumber)</li>
-                  <li>AmanApplication.kt (تسجيل المستودعات)</li>
-                  <li>MainActivity.kt & AmanMainApp.kt</li>
+                <h3 className="text-xs font-bold text-white mb-2">قواعد منع التعارض المحققة في المرحلة 3:</h3>
+                <ul className="text-xs text-slate-400 space-y-1.5 list-disc pl-4">
+                  <li>منع تقديم طلب حماية إذا كان الرقم يمتلك حماية نشطة بالفعل (<code className="text-emerald-400 font-mono">ACTIVE_PROTECTION_EXISTS</code>).</li>
+                  <li>منع إنشاء طلب جديد لنفس الرقم إذا وجد طلب سابق قيد المراجعة (<code className="text-amber-400 font-mono">PENDING</code>).</li>
+                  <li>إلغاء ورفض أي طلبات منافسة لنفس الرقم تلقائياً عند قبول أحد الطلبات.</li>
+                  <li>حفظ لقطات الأسعار والمدد (<code className="text-emerald-400 font-mono">price_snapshot, duration_days_snapshot</code>) لحماية العمليات المالية من التغييرات المستقبلية.</li>
                 </ul>
               </div>
             </div>
           </div>
         )}
 
-        {activeTab === 'logs' && (
-          <div className="max-w-4xl w-full bg-slate-950 border border-slate-800 rounded-2xl p-6">
-            <h2 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-              <Database className="w-5 h-5 text-emerald-400" />
-              <span>فحص مسار المرحلة 2: تسجيل الدخول → بيانات العميل → أرقام العميل → التحقق من الرقم → حفظ الرقم → عرض الرقم</span>
-            </h2>
-            <div className="space-y-3 font-mono text-xs">
-              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-                <div>
-                  <span className="text-white font-bold block">1. تسجيل الدخول وبيانات العميل</span>
-                  <span className="text-slate-400 text-[11px]">Auth → SELECT * FROM users WHERE id = auth.uid()</span>
+        {/* Modal 1: Create Protection Request */}
+        {showRequestModal && targetNumber && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 w-full max-w-md shadow-2xl">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-emerald-400" />
+                  <span className="text-sm font-bold text-white">طلب باقة حماية جديدة</span>
                 </div>
-                <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-[11px]">
-                  {profile ? `Logged in: ${profile.user_type}` : 'Unauthenticated'}
-                </span>
+                <button onClick={() => setShowRequestModal(false)} className="text-slate-400 hover:text-white">
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-                <div>
-                  <span className="text-white font-bold block">2. التحقق اللحظي من بادئة الرقم</span>
-                  <span className="text-slate-400 text-[11px]">RPC: detect_company_from_phone(p_normalized_phone)</span>
+              {conflictWarning ? (
+                <div className="p-3 bg-amber-950/40 border border-amber-500/40 rounded-xl text-xs text-amber-300 space-y-2 mb-4">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <AlertTriangle className="w-4 h-4 text-amber-400" />
+                    <span>تنبيه تعارض في الطلب:</span>
+                  </div>
+                  <p>{conflictWarning}</p>
+                  <button
+                    onClick={() => setShowRequestModal(false)}
+                    className="w-full py-1.5 bg-slate-800 rounded-lg text-white font-bold"
+                  >
+                    حسناً، فهمت
+                  </button>
                 </div>
-                <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-[11px]">
-                  HTTP 200 OK
-                </span>
+              ) : (
+                <form onSubmit={handleSubmitProtectionRequest} className="space-y-3">
+                  <div className="p-2.5 bg-slate-950 rounded-xl flex items-center justify-between text-xs">
+                    <span className="font-mono font-bold text-white">{targetNumber.normalized_phone_number}</span>
+                    <span className="text-slate-400">{targetNumber.company_name_ar}</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">اختر باقة الحماية:</label>
+                    <select
+                      value={selectedPlanId}
+                      onChange={(e) => setSelectedPlanId(e.target.value)}
+                      required
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    >
+                      {plans.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name_ar} — {p.price} {p.currency} ({p.duration_days} يوماً)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">وسيلة التحويل والدفع:</label>
+                    <select
+                      value={selectedPmId}
+                      onChange={(e) => setSelectedPmId(e.target.value)}
+                      required
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    >
+                      {paymentMethods.map((pm) => (
+                        <option key={pm.id} value={pm.id}>
+                          {pm.name_ar} ({pm.account_identifier})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">رقم مرجع الحوالة أو إشعار الإيداع:</label>
+                    <input
+                      type="text"
+                      required
+                      value={transferRef}
+                      onChange={(e) => setTransferRef(e.target.value)}
+                      placeholder="رقم إشعار الحوالة الصادر من البنك/المحفظة"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">ملاحظة للمشرف (اختياري):</label>
+                    <input
+                      type="text"
+                      value={customerNote}
+                      onChange={(e) => setCustomerNote(e.target.value)}
+                      placeholder="أي توضيحات للتحويل..."
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowRequestModal(false)}
+                      className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={actionLoading || !transferRef.trim()}
+                      className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold disabled:opacity-50"
+                    >
+                      {actionLoading ? 'جاري الإرسال...' : 'إرسال طلب الحماية (PENDING)'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Modal 2: Admin Reject Dialog */}
+        {rejectModalReq && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 w-full max-w-sm shadow-2xl">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-3">
+                <span className="text-xs font-bold text-rose-400">رفض طلب الحماية</span>
+                <button onClick={() => setRejectModalReq(null)}><X className="w-4 h-4 text-slate-400" /></button>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-                <div>
-                  <span className="text-white font-bold block">3. حفظ الرقم الموثوق دون إنشاء حماية</span>
-                  <span className="text-slate-400 text-[11px]">RPC: rpc_add_customer_number(p_phone_number)</span>
-                </div>
-                <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-[11px]">
-                  Save Only Verified
-                </span>
-              </div>
+              <p className="text-xs text-slate-300 mb-3 leading-relaxed">
+                يرجى كتابة سبب الرفض لتوضيحه للعميل في الإشعار وحالة الطلب:
+              </p>
 
-              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-                <div>
-                  <span className="text-white font-bold block">4. قراءة وعرض أرقام العميل النشطة</span>
-                  <span className="text-slate-400 text-[11px]">SELECT * FROM customer_numbers WHERE is_deleted = false</span>
-                </div>
-                <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-[11px]">
-                  {numbers.length} Numbers Loaded
-                </span>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="مثال: رقم الحوالة غير مطابق، أو المبلغ غير كافٍ..."
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-rose-500 h-24 mb-3"
+              />
+
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setRejectModalReq(null)}
+                  className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-xl text-xs"
+                >
+                  إلغاء
+                </button>
+                <button
+                  onClick={handleRejectRequest}
+                  disabled={actionLoading || !rejectionReason.trim()}
+                  className="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold disabled:opacity-50"
+                >
+                  {actionLoading ? 'جاري الرفض...' : 'تأكيد الرفض'}
+                </button>
               </div>
             </div>
           </div>

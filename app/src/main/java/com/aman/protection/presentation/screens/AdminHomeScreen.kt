@@ -22,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,42 +30,45 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aman.protection.data.models.UserDto
+import com.aman.protection.presentation.admin.AdminProtectionViewModel
+import com.aman.protection.presentation.admin.screens.AdminProtectionRequestsScreen
 import com.aman.protection.presentation.theme.Amber500
 import com.aman.protection.presentation.theme.Navy900
 import com.aman.protection.presentation.theme.Slate50
-import com.aman.protection.presentation.theme.Slate700
-import com.aman.protection.presentation.theme.Slate900
 
 @Composable
 fun AdminHomeScreen(
     user: UserDto,
+    adminProtectionViewModel: AdminProtectionViewModel,
     onSignOut: () -> Unit
 ) {
+    LaunchedEffect(Unit) {
+        adminProtectionViewModel.loadAdminData()
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Slate50)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
             // Admin Header Bar
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(containerColor = Navy900)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(44.dp)
+                            .size(42.dp)
                             .background(Amber500, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
@@ -72,7 +76,7 @@ fun AdminHomeScreen(
                             imageVector = Icons.Default.AdminPanelSettings,
                             contentDescription = null,
                             tint = Navy900,
-                            modifier = Modifier.size(26.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
 
@@ -83,12 +87,12 @@ fun AdminHomeScreen(
                             text = user.fullName ?: user.email ?: "مدير النظام",
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
+                            fontSize = 15.sp
                         )
                         Text(
-                            text = "لوحة تحكم المشرف • AMAN Admin",
+                            text = "لوحة تحكم المشرف • مراجعة واعتماد طلبات الحماية",
                             color = Amber500,
-                            fontSize = 12.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -103,72 +107,11 @@ fun AdminHomeScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Admin Identity Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = "بيانات المشرف الفعلية (public.users)",
-                        fontWeight = FontWeight.Bold,
-                        color = Slate900,
-                        fontSize = 15.sp
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(modifier = Modifier.padding(vertical = 4.dp)) {
-                        Text("المعرف الفريد (UUID): ", color = Slate700, fontSize = 12.sp, modifier = Modifier.width(130.dp))
-                        Text(user.id, color = Slate900, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                    }
-                    Row(modifier = Modifier.padding(vertical = 4.dp)) {
-                        Text("البريد الإلكتروني: ", color = Slate700, fontSize = 12.sp, modifier = Modifier.width(130.dp))
-                        Text(user.email ?: "-", color = Slate900, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                    }
-                    Row(modifier = Modifier.padding(vertical = 4.dp)) {
-                        Text("نوع الحساب: ", color = Slate700, fontSize = 12.sp, modifier = Modifier.width(130.dp))
-                        Text("إدارة عليا (Admin)", color = Amber500, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Verified Status
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF3C7)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = "بوابة الإدارة متصلة وموثقة بنجاح",
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFB45309),
-                        fontSize = 14.sp
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "تم التحقق من صلاحيات المدير الفعلي وتوجيهه إلى واجهة الإدارة، وجاهز للمرحلة الثانية لبناء لوحة التحكم الشاملة.",
-                        color = Color(0xFF78350F),
-                        fontSize = 12.sp
-                    )
-                }
-            }
+            // Embedded Pending Requests Screen
+            AdminProtectionRequestsScreen(
+                viewModel = adminProtectionViewModel,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
