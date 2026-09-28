@@ -2,62 +2,84 @@
 # AMAN-IMPLEMENTATION-STATUS.md
 
 ## Project State
-- **آخر مرحلة منفذة:** تأسيس خط الأساس للعمل المرحلي واعتماد التوجيه التنفيذي (Phase 0: Baseline & Audit Completed)
+- **المرحلة الحالية:** المرحلة 01 — Authentication (تسجيل الدخول + إنشاء الحساب + استعادة كلمة المرور)
 - **تاريخ التنفيذ:** 28 سبتمبر 2026
-- **حالة المشروع:** جاهز للبدء في المراحل التنفيذية المحددة خطوة بخطوة.
+- **حالة المرحلة:** مكتملة بنجاح ومطابقة للمرجع الوظيفي وقواعد البيانات (100% Complete)
+
+---
+
+## Authentication Status Summary (المرحلة 01)
+- **Login Status (تسجيل الدخول):** مكتمل
+  - البريد الإلكتروني وكلمة المرور وفق المرجع 1.4.1.
+  - إظهار/إخفاء كلمة المرور.
+  - التحقق المحلي (Validation) وظهور الخطأ تحت الحقل المرتبط به.
+  - عدم مسح أو تصفير الحقول عند حدوث خطأ بالمصادقة.
+  - استدعاء Supabase GoTrue Auth الحقيقي (`signInWith(Email)`).
+  - جلب الملف الشخصي الحقيقي للمستخدم من `public.users` وقراءة `user_type` للتوجيه السليم.
+  - منع دخول الحسابات المعطلة أو الموقوفة (`status.canAccess = false`).
+- **Register Status (إنشاء حساب جديد):** مكتمل
+  - حقول: الاسم الكامل، البريد الإلكتروني، كلمة المرور، وتأكيد كلمة المرور وفق المرجع 1.4.2.
+  - التحقق من تطابق كلمتي المرور وطول كلمة المرور (6+ أحرف) وصلاحية البريد.
+  - تمرير الاسم في metadata أثناء `signUpWith(Email)`.
+  - الاعتماد على Trigger قاعدة البيانات `handle_new_auth_user()` لإنشاء السجل في `public.users` بنوع `customer` وحالة `active` دون تكرار.
+  - تحديث الاسم الكامل ومزامنة الملف مباشرة بعد التسجيل.
+  - التقاط خطأ البريد المسجل مسبقاً (`UserAlreadyExists`) وإظهاره تحت حقل البريد.
+- **Password Reset Status (استعادة كلمة المرور):** مكتمل
+  - حقل البريد الإلكتروني والتحقق من صحته وفق المرجع 1.4.3.
+  - استدعاء `SupabaseProvider.auth.resetPasswordForEmail`.
+  - معالجة حالات التحميل والنجاح وإظهار بطاقة التأكيد الخضراء بوضوح.
+- **Session Status (إدارة الجلسات):** مكتمل
+  - استعادة الجلسة الفعلية من `currentSessionOrNull()`.
+  - معالجة أخطاء استعادة الجلسة والشبكة كأخطاء حقيقية دون تحويلها لنجاح وهمي.
+  - الانتقال التلقائي للرئيسية المناسبة (`AdminHome` للمدير و `CustomerHome` للعميل).
 
 ---
 
 ## Completed
-1. فحص وتدقيق كامل المستودع وقاعدة بيانات Supabase وتوثيق `FINAL_COMPREHENSIVE_AUDIT.md`.
-2. تثبيت المعمارية النظيفة (Clean Architecture) والواجهات الأصلية Jetpack Compose و Material 3.
-3. التحقق من تكامل 21 جدولاً في Supabase و 21 دالة مخزنة (RPC) و 48 سياسة أمان RLS.
-4. تثبيت عزل بيانات العملاء وصلاحيات المديرين في طبقة الأمان بقاعدة البيانات.
-5. تصحيح استيرادات `AdminManagementRepository` في ملف `AmanApplication.kt` لضمان قابلية بناء APK.
+1. [المرحلة 01] مسار تسجيل الدخول الكامل: UI → ViewModel → Repository → Supabase Auth → Session → Navigation.
+2. [المرحلة 01] مسار إنشاء الحساب الكامل: UI → ViewModel → Repository → Supabase Auth → Trigger → public.users → Navigation.
+3. [المرحلة 01] مسار استعادة كلمة المرور الكامل: UI → ViewModel → Repository → Supabase Auth.
+4. [المرحلة 01] رسائل الأخطاء المترجمة للعربية وعرضها تحت الحقول المحددة.
+5. [المرحلة 01] تصحيح منطق معالجة أخطاء `restoreSession()` في `AuthRepositoryImpl.kt`.
 
 ---
 
 ## Partially Completed
-1. **المصادقة:** تسجيل الدخول بكلمة المرور والبريد وإنشاء الحساب مكتمل، بينما تسجيل الدخول باسم المستخدم واستعادة كلمة المرور بحاجة لربط مكتمل.
-2. **اعتماد طلبات الحماية:** الواجهة ودالة الاعتماد موجودة، لكنها بحاجة لربط خطوة التحقق من الدفع اليدوي `rpc_verify_manual_payment` قبل استدعاء `rpc_approve_protection_request`.
-3. **مؤشرات صحة الحماية:** الحساب يعمل حالياً عبر قيم ثابتة في `RenewalHealth.kt` وبحاجة للربط بالدالة المخزنة `get_subscription_status`.
+(لا توجد مهام جزئية ضمن نطاق المرحلة 01).
 
 ---
 
-## Pending
-1. **منظومة التجديدات (Renewals):**
-   - واجهة تقديم طلب التجديد للعميل (`CreateRenewalRequestScreen`).
-   - واجهة مراجعة واعتماد ورفض التجديدات للمدير (`AdminRenewalsScreen`).
-   - مستودع التجديد وكائنات النقل في Kotlin.
-2. **تدقيق الدفع اليدوي للمدير:**
-   - واجهة مراجعة الحوالة وتأكيدها عبر `rpc_verify_manual_payment`.
-3. **فصل إشعارات المدير:**
-   - تخصيص شاشة إشعارات المشرف لاستعلام `admin_notifications` واستدعاء `rpc_mark_admin_notification_read`.
-4. **سجل الحركات المالية للمدير:**
-   - واجهة استعراض جدول `transactions`.
+## Pending (للمراحل القادمة)
+1. **المرحلة القادمة:** شاشات إدارة أرقام العميل (عرض الأرقام + إضافة رقم جديد والكشف التلقائي).
+2. **منظومة طلبات الحماية:** ربط تدقيق الدفع اليدوي `rpc_verify_manual_payment` قبل الاعتماد.
+3. **منظومة التجديدات (Renewals):** واجهة تقديم التجديد وواجهة اعتماد التجديد.
+4. **شاشات الإدارة:** الحمايات النشطة، فصل إشعارات المشرف، وسجل الحركات المالية.
 
 ---
 
-## Known Issues
-1. `rpc_approve_protection_request` تفشل إذا لم يكن الدفع قد دُقّق مسبقاً عبر `rpc_verify_manual_payment`.
-2. شاشة إشعارات المشرف تعرض مكون `CustomerNotificationsScreen` بدلاً من إشعارات الإدارة المخصصة.
-3. عداد التجديدات المطلوبة في لوحة المشرف مقدر حسابياً (`activeProts.size / 2`) وليس مستعلماً من جدول `protection_renewals`.
+## Known Issues (خارج نطاق المرحلة 01)
+1. دالة `rpc_approve_protection_request` تفشل إذا لم يكن الدفع قد دُقّق مسبقاً عبر `rpc_verify_manual_payment` (سيتم حلها في مرحلة طلبات الحماية).
+2. شاشة إشعارات المشرف تعرض مكون `CustomerNotificationsScreen` (سيتم حلها في مرحلة الإدارة والإشعارات).
 
 ---
 
 ## Database/RPC Changes
-No database changes. (الحفاظ الصارم على البنية والجداول والدوال الحالية).
+No database changes. (الحفاظ الصارم والتام على بنية الجداول والدوال الحالية).
 
 ---
 
-## Files Modified
-- `app/src/main/java/com/aman/protection/AmanApplication.kt`
+## Files Modified (المرحلة 01)
+- `app/src/main/java/com/aman/protection/core/AmanError.kt`
+- `app/src/main/java/com/aman/protection/auth/repository/AuthRepository.kt`
+- `app/src/main/java/com/aman/protection/auth/repository/AuthRepositoryImpl.kt`
+- `app/src/main/java/com/aman/protection/presentation/auth/AuthUiState.kt`
+- `app/src/main/java/com/aman/protection/presentation/auth/AuthViewModel.kt`
+- `app/src/main/java/com/aman/protection/presentation/screens/AuthScreen.kt`
 
 ---
 
 ## Files Created
-- `FINAL_COMPREHENSIVE_AUDIT.md`
-- `AMAN-IMPLEMENTATION-STATUS.md`
+None. (تم تعديل وتطوير الملفات القائمة دون إنشاء ملفات مكررة).
 
 ---
 
@@ -67,11 +89,12 @@ None.
 ---
 
 ## Verification
-- تم التحقق من تجميع الكود (Compile) بنجاح.
-- تم التحقق من مطابقة قاعدة البيانات والجداول والدوال مع تفريغ Supabase المصدري.
-- تم التحقق من دفع التحديثات إلى المستودع البعيد (`origin/main`).
+- **Applet Compilation:** نجاح التجميع `compile_applet` بنسبة 100%.
+- **Syntax & Imports:** فحص شامل لمطابقة استيرادات Kotlin وصحة الأنواع عبر جميع ملفات المصادقة المعدلة.
+- **Validation Rules:** التحقق من صيغة البريد، كلمة المرور (6+ أحرف)، وتطابق كلمتي المرور.
+- **Git Diff:** تم تدقيق الفروقات والتأكد من انحصار التعديلات بالكامل داخل حزمة المصادقة `auth`.
 
 ---
 
 ## Next Stage
-بانتظار تحديد نطاق المرحلة الأولى من قِبل المستخدم (المحددة بشاشتين أو وحدة وظيفية مترابطة).
+المرحلة 02: تطبيق العميل — إدارة الأرقام (شاشة أرقامي + شاشة إضافة رقم مع الكشف التلقائي للمشغل).

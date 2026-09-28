@@ -30,6 +30,17 @@ sealed class AmanError(
         code = "USER_NOT_FOUND"
     )
 
+    class UserAlreadyExists(technicalMessage: String? = null) : AmanError(
+        messageAr = "البريد الإلكتروني مسجل مسبقًا في النظام",
+        technicalMessage = technicalMessage,
+        code = "USER_ALREADY_EXISTS"
+    )
+
+    class ValidationError(messageAr: String) : AmanError(
+        messageAr = messageAr,
+        code = "VALIDATION_ERROR"
+    )
+
     class SessionExpired : AmanError(
         messageAr = "انتهت صلاحية الجلسة، يرجى تسجيل الدخول مجددًا",
         code = "SESSION_EXPIRED"
@@ -53,6 +64,8 @@ sealed class AmanError(
             return when {
                 msg.contains("network") || msg.contains("connect") || msg.contains("timeout") || msg.contains("unreachable") ->
                     NetworkError(throwable.message)
+                msg.contains("already registered") || msg.contains("already exists") || msg.contains("user_already_exists") ->
+                    UserAlreadyExists(throwable.message)
                 msg.contains("invalid login") || msg.contains("invalid_credentials") || msg.contains("grant_error") ->
                     InvalidCredentials(throwable.message)
                 msg.contains("session") || msg.contains("jwt") || msg.contains("expired") ->

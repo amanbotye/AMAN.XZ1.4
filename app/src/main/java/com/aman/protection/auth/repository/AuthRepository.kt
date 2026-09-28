@@ -13,6 +13,7 @@ interface AuthRepository {
 
     suspend fun signInWithEmail(email: String, password: String): AmanResult<UserSession>
     suspend fun signUpWithEmail(email: String, password: String, fullName: String): AmanResult<UserSession>
+    suspend fun resetPasswordForEmail(email: String): AmanResult<Unit>
     suspend fun signOut(): AmanResult<Unit>
     suspend fun restoreSession(): AmanResult<UserSession?>
 }

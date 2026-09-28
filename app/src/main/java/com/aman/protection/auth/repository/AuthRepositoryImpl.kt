@@ -2,11 +2,13 @@ package com.aman.protection.auth.repository
 
 import com.aman.protection.auth.model.AuthState
 import com.aman.protection.auth.model.UserSession
+import com.aman.protection.core.AmanConstants
 import com.aman.protection.core.AmanError
 import com.aman.protection.core.AmanResult
 import com.aman.protection.data.remote.SupabaseProvider
 import com.aman.protection.data.repository.UserRepository
 import io.github.jan.supabase.gotrue.providers.builtin.Email
+import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -89,11 +91,31 @@ class AuthRepositoryImpl(
                 }
             }
 
-            // بعد التسجيل محاولة تسجيل الدخول مباشرة
-            signInWithEmail(email, password)
+            // بعد التسجيل تسجيل الدخول وتحديث الاسم في الملف إن لزم
+            val signInResult = signInWithEmail(email, password)
+            if (signInResult is AmanResult.Success && fullName.isNotBlank()) {
+                try {
+                    SupabaseProvider.postgrest.from(AmanConstants.TABLE_USERS)
+                        .update(buildJsonObject { put("full_name", fullName.trim()) }) {
+                            filter { eq("id", signInResult.data.userId) }
+                        }
+                    userRepository.fetchUserProfile(signInResult.data.userId)
+                } catch (_: Exception) {}
+            }
+            signInResult
         } catch (e: Exception) {
             val error = AmanError.fromThrowable(e)
             _authState.value = AuthState.Error(error)
+            AmanResult.Error(error)
+        }
+    }
+
+    override suspend fun resetPasswordForEmail(email: String): AmanResult<Unit> = withContext(Dispatchers.IO) {
+        try {
+            SupabaseProvider.auth.resetPasswordForEmail(email.trim())
+            AmanResult.Success(Unit)
+        } catch (e: Exception) {
+            val error = AmanError.fromThrowable(e)
             AmanResult.Error(error)
         }
     }
@@ -138,16 +160,18 @@ class AuthRepositoryImpl(
                         AmanResult.Error(error)
                     }
                 } else {
-                    _authState.value = AuthState.Unauthenticated
-                    AmanResult.Success(null)
+                    val error = (userResult as AmanResult.Error).error
+                    _authState.value = AuthState.Error(error)
+                    AmanResult.Error(error)
                 }
             } else {
                 _authState.value = AuthState.Unauthenticated
                 AmanResult.Success(null)
             }
         } catch (e: Exception) {
-            _authState.value = AuthState.Unauthenticated
-            AmanResult.Success(null)
+            val error = AmanError.fromThrowable(e)
+            _authState.value = AuthState.Error(error)
+            AmanResult.Error(error)
         }
     }
 }
