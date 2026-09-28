@@ -7,6 +7,12 @@ import com.aman.protection.data.repository.CustomerNumberRepository
 import com.aman.protection.data.repository.CustomerNumberRepositoryImpl
 import com.aman.protection.data.repository.CustomerRepository
 import com.aman.protection.data.repository.CustomerRepositoryImpl
+import com.aman.protection.data.repository.NotificationRepository
+import com.aman.protection.data.repository.NotificationRepositoryImpl
+import com.aman.protection.data.repository.PaymentMethodRepository
+import com.aman.protection.data.repository.PaymentMethodRepositoryImpl
+import com.aman.protection.data.repository.PaymentTaskRepository
+import com.aman.protection.data.repository.PaymentTaskRepositoryImpl
 import com.aman.protection.data.repository.ProtectionPlanRepository
 import com.aman.protection.data.repository.ProtectionPlanRepositoryImpl
 import com.aman.protection.data.repository.ProtectionRepository
@@ -48,6 +54,15 @@ class AmanApplication : Application() {
     lateinit var protectionRepository: ProtectionRepository
         private set
 
+    lateinit var paymentMethodRepository: PaymentMethodRepository
+        private set
+
+    lateinit var paymentTaskRepository: PaymentTaskRepository
+        private set
+
+    lateinit var notificationRepository: NotificationRepository
+        private set
+
     lateinit var appNavigator: AppNavigator
         private set
 
@@ -63,6 +78,9 @@ class AmanApplication : Application() {
         protectionPlanRepository = ProtectionPlanRepositoryImpl()
         protectionRequestRepository = ProtectionRequestRepositoryImpl(protectionPlanRepository, customerNumberRepository)
         protectionRepository = ProtectionRepositoryImpl(customerNumberRepository)
+        paymentMethodRepository = PaymentMethodRepositoryImpl()
+        paymentTaskRepository = PaymentTaskRepositoryImpl(customerNumberRepository)
+        notificationRepository = NotificationRepositoryImpl()
         appNavigator = AppNavigator()
     }
 

@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import com.aman.protection.domain.models.Protection
 import com.aman.protection.domain.models.ProtectionRequest
 import com.aman.protection.domain.models.RequestStatus
+import com.aman.protection.domain.models.RenewalHealth
 import com.aman.protection.presentation.protection.CustomerProtectionViewModel
 import com.aman.protection.presentation.theme.Amber500
 import com.aman.protection.presentation.theme.Emerald600
@@ -234,6 +235,15 @@ private fun RequestItemCard(request: ProtectionRequest) {
 
 @Composable
 private fun ProtectionItemCard(protection: Protection) {
+    val (health, daysRemaining) = RenewalHealth.calculate(protection.endAt)
+
+    val (badgeBg, badgeText) = when (health) {
+        RenewalHealth.SAFE -> Pair(Color(0xFFDCFCE7), Color(0xFF15803D))
+        RenewalHealth.SOON -> Pair(Color(0xFFFEF3C7), Color(0xFFD97706))
+        RenewalHealth.DANGER -> Pair(Color(0xFFFEE2E2), Color(0xFFDC2626))
+        RenewalHealth.EXPIRED -> Pair(Color(0xFFF1F5F9), Color(0xFF334155))
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -266,12 +276,12 @@ private fun ProtectionItemCard(protection: Protection) {
                 )
                 Box(
                     modifier = Modifier
-                        .background(Color(0xFFECFDF5), RoundedCornerShape(6.dp))
+                        .background(badgeBg, RoundedCornerShape(6.dp))
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
-                        text = "حماية فعالة ACTIVE",
-                        color = Emerald600,
+                        text = "${health.symbol} ${health.labelAr} (${daysRemaining} يوم)",
+                        color = badgeText,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -291,6 +301,13 @@ private fun ProtectionItemCard(protection: Protection) {
                 fontSize = 11.sp,
                 fontFamily = FontFamily.Monospace,
                 color = Slate900
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = health.description,
+                fontSize = 11.sp,
+                color = badgeText
             )
         }
     }

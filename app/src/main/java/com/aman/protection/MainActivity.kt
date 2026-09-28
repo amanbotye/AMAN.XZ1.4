@@ -10,8 +10,11 @@ import com.aman.protection.presentation.admin.AdminProtectionViewModel
 import com.aman.protection.presentation.auth.AuthViewModel
 import com.aman.protection.presentation.customer.CustomerViewModel
 import com.aman.protection.presentation.main.MainViewModel
+import com.aman.protection.presentation.notifications.NotificationsViewModel
+import com.aman.protection.presentation.payment.PaymentMethodViewModel
 import com.aman.protection.presentation.protection.CustomerProtectionViewModel
 import com.aman.protection.presentation.screens.AmanMainApp
+import com.aman.protection.presentation.tasks.AdminTasksViewModel
 
 /**
  * MainActivity - نقطة البداية لتطبيق Android الأصلي
@@ -79,6 +82,36 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val paymentMethodViewModel: PaymentMethodViewModel by viewModels {
+        object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val app = AmanApplication.instance
+                @Suppress("UNCHECKED_CAST")
+                return PaymentMethodViewModel(app.paymentMethodRepository) as T
+            }
+        }
+    }
+
+    private val adminTasksViewModel: AdminTasksViewModel by viewModels {
+        object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val app = AmanApplication.instance
+                @Suppress("UNCHECKED_CAST")
+                return AdminTasksViewModel(app.paymentTaskRepository) as T
+            }
+        }
+    }
+
+    private val notificationsViewModel: NotificationsViewModel by viewModels {
+        object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val app = AmanApplication.instance
+                @Suppress("UNCHECKED_CAST")
+                return NotificationsViewModel(app.notificationRepository) as T
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -87,7 +120,10 @@ class MainActivity : ComponentActivity() {
                 authViewModel = authViewModel,
                 customerViewModel = customerViewModel,
                 protectionViewModel = customerProtectionViewModel,
-                adminProtectionViewModel = adminProtectionViewModel
+                adminProtectionViewModel = adminProtectionViewModel,
+                paymentMethodViewModel = paymentMethodViewModel,
+                adminTasksViewModel = adminTasksViewModel,
+                notificationsViewModel = notificationsViewModel
             )
         }
     }
