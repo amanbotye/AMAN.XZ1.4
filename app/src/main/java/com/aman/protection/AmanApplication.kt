@@ -17,6 +17,8 @@ import com.aman.protection.data.repository.ProtectionPlanRepository
 import com.aman.protection.data.repository.ProtectionPlanRepositoryImpl
 import com.aman.protection.data.repository.ProtectionRepository
 import com.aman.protection.data.repository.ProtectionRepositoryImpl
+import com.aman.protection.data.repository.AdminManagementRepository
+import com.aman.protection.data.repository.AdminManagementRepositoryImpl
 import com.aman.protection.data.repository.ProtectionRequestRepository
 import com.aman.protection.data.repository.ProtectionRequestRepositoryImpl
 import com.aman.protection.data.repository.UserRepository
