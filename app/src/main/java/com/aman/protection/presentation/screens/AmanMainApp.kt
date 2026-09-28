@@ -3,7 +3,8 @@ package com.aman.protection.presentation.screens
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
+import com.aman.protection.data.models.UserType
+import com.aman.protection.data.models.toDomain
 import com.aman.protection.navigation.AmanDestination
 import com.aman.protection.presentation.admin.AdminManagementViewModel
 import com.aman.protection.presentation.admin.AdminProtectionViewModel
@@ -17,8 +18,8 @@ import com.aman.protection.presentation.tasks.AdminTasksViewModel
 import com.aman.protection.presentation.theme.AmanTheme
 
 /**
- * نقطة العرض والربط الرئيسية للتطبيق:
- * App -> Session -> Auth -> public.users -> User State -> Navigation -> Stages 1-5 Complete
+ * نقطة العرض والربط الرئيسية لتطبيق أمان (Android Native Jetpack Compose)
+ * إدارة الجلسة والمصادقة والفصل المعماري الصارم بين العميل والإدارة
  */
 @Composable
 fun AmanMainApp(
@@ -39,9 +40,9 @@ fun AmanMainApp(
             uiState.isLoading -> {
                 SplashScreen()
             }
-            uiState.destination == AmanDestination.AdminHome && uiState.currentUser != null -> {
+            uiState.currentUser != null && (uiState.currentUser!!.userType == UserType.ADMIN || uiState.destination.isAdminRoute) -> {
                 AdminHomeScreen(
-                    user = uiState.currentUser!!,
+                    user = uiState.currentUser!!.toDomain(),
                     adminProtectionViewModel = adminProtectionViewModel,
                     adminTasksViewModel = adminTasksViewModel,
                     notificationsViewModel = notificationsViewModel,
@@ -49,9 +50,7 @@ fun AmanMainApp(
                     onSignOut = mainViewModel::signOut
                 )
             }
-            (uiState.destination == AmanDestination.CustomerHome ||
-             uiState.destination == AmanDestination.CustomerNumbers ||
-             uiState.destination == AmanDestination.AddCustomerNumber) && uiState.currentUser != null -> {
+            uiState.currentUser != null && (uiState.currentUser!!.userType == UserType.CUSTOMER || uiState.destination.isCustomerRoute) -> {
                 CustomerHomeScreen(
                     user = uiState.currentUser!!,
                     customerViewModel = customerViewModel,

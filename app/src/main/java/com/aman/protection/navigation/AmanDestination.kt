@@ -29,6 +29,7 @@ sealed class AmanDestination(val route: String) {
     object CustomerMore : AmanDestination("customer_more")
 
     // الإدارة (ADM-01 إلى ADM-11 + ADM-LOGIN)
+    object AdminLogin : AmanDestination("admin_login")
     object AdminHome : AmanDestination("admin_home")
     object AdminDashboard : AmanDestination("admin_dashboard")
     object AdminCustomers : AmanDestination("admin_customers")
@@ -42,6 +43,29 @@ sealed class AmanDestination(val route: String) {
     object AdminNotifications : AmanDestination("admin_notifications")
     object AdminAuditLogs : AmanDestination("admin_audit_logs")
     object AdminSettings : AmanDestination("admin_settings")
+
+    val isAdminRoute: Boolean
+        get() = when (this) {
+            is AdminHome, is AdminDashboard, is AdminCustomers, is AdminCustomerNumbers,
+            is AdminProtectionRequests, is AdminProtections, is AdminTasks, is AdminCompanies,
+            is AdminPlans, is AdminPaymentMethods, is AdminNotifications, is AdminAuditLogs,
+            is AdminSettings, is AdminLogin -> true
+            else -> false
+        }
+
+    val isCustomerRoute: Boolean
+        get() = when (this) {
+            is CustomerHome, is CustomerNumbers, is AddCustomerNumber, is CustomerProtectionRequests,
+            is CreateProtectionRequest, is CustomerProtections, is CustomerRenewal,
+            is CustomerNotifications, is CustomerAccount, is CustomerMore -> true
+            else -> false
+        }
+
+    val isAuthRoute: Boolean
+        get() = when (this) {
+            is Auth, is Login, is SignUp, is ForgotPassword, is ChangePassword -> true
+            else -> false
+        }
 
     companion object {
         fun fromRoute(route: String?): AmanDestination = when (route) {
@@ -61,6 +85,7 @@ sealed class AmanDestination(val route: String) {
             "customer_notifications" -> CustomerNotifications
             "customer_account" -> CustomerAccount
             "customer_more" -> CustomerMore
+            "admin_login" -> AdminLogin
             "admin_home" -> AdminHome
             "admin_dashboard" -> AdminDashboard
             "admin_customers" -> AdminCustomers
