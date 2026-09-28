@@ -18,7 +18,9 @@ import {
   CustomerNumberItem,
   UserProfile,
   ProtectionItem,
-  ProtectionRequestItem
+  ProtectionRequestItem,
+  PaymentTaskItem,
+  TelecomProvider
 } from '../../types/aman';
 
 interface AdminCustomerNumbersScreenProps {
@@ -26,13 +28,17 @@ interface AdminCustomerNumbersScreenProps {
   customers: UserProfile[];
   protections: ProtectionItem[];
   requests: ProtectionRequestItem[];
+  tasks?: PaymentTaskItem[];
+  companies?: TelecomProvider[];
 }
 
 export const AdminCustomerNumbersScreen: React.FC<AdminCustomerNumbersScreenProps> = ({
   numbers,
   customers,
   protections,
-  requests
+  requests,
+  tasks = [],
+  companies = []
 }) => {
   const [search, setSearch] = useState('');
   const [selectedNumber, setSelectedNumber] = useState<CustomerNumberItem | null>(null);
@@ -155,14 +161,25 @@ export const AdminCustomerNumbersScreen: React.FC<AdminCustomerNumbersScreenProp
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">المالك:</span>
-                <span className="text-slate-200">
+                <span className="text-slate-500">العميل (المالك):</span>
+                <span className="text-slate-200 font-bold">
                   {customers.find((c) => c.id === selectedNumber.customer_id)?.full_name || 'غير معروف'}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">البادئة والمشغل:</span>
-                <span className="text-sky-400 font-bold">{selectedNumber.detected_prefix}</span>
+                <span className="text-slate-500">شركة الاتصالات:</span>
+                <span className="text-sky-400 font-bold">
+                  {companies.find((co) => co.id === selectedNumber.company_id)?.name_ar ||
+                   selectedNumber.company_name_ar ||
+                   `بادئة ${selectedNumber.detected_prefix}`}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">الحماية الحالية:</span>
+                <span className="font-bold text-emerald-400">
+                  {protections.find((p) => p.customer_number_id === selectedNumber.id && p.status === 'active')
+                    ?.package_name_snapshot || 'لا توجد حماية نشطة'}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">ملاحظات العميل:</span>
@@ -170,21 +187,95 @@ export const AdminCustomerNumbersScreen: React.FC<AdminCustomerNumbersScreenProp
               </div>
             </div>
 
+            {/* Current Protection Details */}
+            {protections.find((p) => p.customer_number_id === selectedNumber.id && p.status === 'active') && (
+              <div className="p-2.5 bg-emerald-950/20 border border-emerald-800/40 rounded-xl text-xs space-y-1">
+                <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>بيانات الحماية الحالية النشطة</span>
+                </div>
+                {(() => {
+                  const prot = protections.find((p) => p.customer_number_id === selectedNumber.id && p.status === 'active')!;
+                  return (
+                    <div className="text-[11px] text-slate-300 space-y-0.5 pt-1">
+                      <div>الباقة: {prot.package_name_snapshot} ({prot.price_snapshot} {prot.currency_snapshot})</div>
+                      <div>الانتهاء: {new Date(prot.end_at).toLocaleDateString('ar-YE')}</div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
             {/* Related requests */}
             <div>
-              <h4 className="text-xs font-bold text-slate-300 mb-1.5">طلبات الحماية المرتبطة</h4>
-              <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                {requests
-                  .filter((r) => r.customer_number_id === selectedNumber.id)
-                  .map((r) => (
-                    <div
-                      key={r.id}
-                      className="p-2 bg-slate-950 rounded-lg border border-slate-800 flex items-center justify-between text-xs"
-                    >
-                      <span>{r.package_name || 'باقة حماية'}</span>
-                      <span className="text-[10px] font-bold text-slate-300">{r.status}</span>
-                    </div>
-                  ))}
+              <h4 className="text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1">
+                <FileText className="w-3.5 h-3.5 text-amber-400" />
+                <span>طلبات الحماية المرتبطة</span>
+              </h4>
+              <div className="space-y-1.5 max-h-28 overflow-y-auto">
+                {requests.filter((r) => r.customer_number_id === selectedNumber.id).length === 0 ? (
+                  <p className="text-[11px] text-slate-500">لا توجد طلبات حماية</p>
+                ) : (
+                  requests
+                    .filter((r) => r.customer_number_id === selectedNumber.id)
+                    .map((r) => (
+                      <div
+                        key={r.id}
+                        className="p-2 bg-slate-950 rounded-lg border border-slate-800 flex items-center justify-between text-xs"
+                      >
+                        <span className="text-white">{r.package_name || 'باقة حماية'}</span>
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                            r.status === 'approved'
+                              ? 'text-emerald-400 bg-emerald-500/10'
+                              : r.status === 'rejected'
+                              ? 'text-red-400 bg-red-500/10'
+                              : 'text-amber-400 bg-amber-500/10'
+                          }`}
+                        >
+                          {r.status === 'approved' ? 'مقبول' : r.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
+                        </span>
+                      </div>
+                    ))
+                )}
+              </div>
+            </div>
+
+            {/* Task History */}
+            <div>
+              <h4 className="text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5 text-sky-400" />
+                <span>سجل المهام التشغيلية (Task History)</span>
+              </h4>
+              <div className="space-y-1.5 max-h-28 overflow-y-auto">
+                {tasks.filter((t) => t.customer_number_id === selectedNumber.id).length === 0 ? (
+                  <p className="text-[11px] text-slate-500">لا توجد مهام تشغيلية لهذا الرقم</p>
+                ) : (
+                  tasks
+                    .filter((t) => t.customer_number_id === selectedNumber.id)
+                    .map((tsk) => (
+                      <div
+                        key={tsk.id}
+                        className="p-2 bg-slate-950 rounded-lg border border-slate-800 flex items-center justify-between text-xs"
+                      >
+                        <div>
+                          <div className="text-white">مهمة #{tsk.task_number}: {tsk.amount} YER</div>
+                          <div className="text-[10px] text-slate-500">
+                            {new Date(tsk.due_at).toLocaleDateString('ar-YE')}
+                          </div>
+                        </div>
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                            tsk.status === 'completed'
+                              ? 'text-emerald-400 bg-emerald-500/10'
+                              : 'text-amber-400 bg-amber-500/10'
+                          }`}
+                        >
+                          {tsk.status === 'completed' ? 'منفذة' : 'مستحقة'}
+                        </span>
+                      </div>
+                    ))
+                )}
               </div>
             </div>
 

@@ -14,7 +14,8 @@ import {
   Mail,
   UserCheck,
   UserX,
-  AlertTriangle
+  AlertTriangle,
+  Activity
 } from 'lucide-react';
 import {
   UserProfile,
@@ -231,6 +232,75 @@ export const AdminCustomersScreen: React.FC<AdminCustomersScreenProps> = ({
                       <span className="text-[10px] text-emerald-400 font-bold">{prot.status}</span>
                     </div>
                   ))}
+                {allProtections.filter((p) => p.customer_id === selectedCustomer.id).length === 0 && (
+                  <p className="text-[11px] text-slate-500">لا توجد حمايات</p>
+                )}
+              </div>
+            </div>
+
+            {/* Protection Requests */}
+            <div>
+              <h4 className="text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1">
+                <FileText className="w-3.5 h-3.5 text-amber-400" />
+                <span>طلبات الحماية</span>
+              </h4>
+              <div className="space-y-1.5">
+                {allRequests
+                  .filter((r) => r.customer_id === selectedCustomer.id)
+                  .map((req) => (
+                    <div
+                      key={req.id}
+                      className="p-2 bg-slate-950 rounded-lg border border-slate-800/80 flex items-center justify-between text-xs"
+                    >
+                      <span className="font-mono text-white text-[11px]" dir="ltr">{req.phone_number || 'طلب رقم'}</span>
+                      <span
+                        className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                          req.status === 'approved'
+                            ? 'text-emerald-400 bg-emerald-500/10'
+                            : req.status === 'rejected'
+                            ? 'text-red-400 bg-red-500/10'
+                            : 'text-amber-400 bg-amber-500/10'
+                        }`}
+                      >
+                        {req.status === 'approved' ? 'مقبول' : req.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
+                      </span>
+                    </div>
+                  ))}
+                {allRequests.filter((r) => r.customer_id === selectedCustomer.id).length === 0 && (
+                  <p className="text-[11px] text-slate-500">لا توجد طلبات</p>
+                )}
+              </div>
+            </div>
+
+            {/* Payment Tasks */}
+            <div>
+              <h4 className="text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1">
+                <Activity className="w-3.5 h-3.5 text-sky-400" />
+                <span>المهام التشغيلية</span>
+              </h4>
+              <div className="space-y-1.5">
+                {allTasks
+                  .filter((t) => t.customer_id === selectedCustomer.id)
+                  .map((tsk) => (
+                    <div
+                      key={tsk.id}
+                      className="p-2 bg-slate-950 rounded-lg border border-slate-800/80 flex items-center justify-between text-xs"
+                    >
+                      <span className="text-slate-200">مهمة #{tsk.task_number}: {tsk.amount} YER</span>
+                      <span
+                        className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                          tsk.status === 'completed'
+                            ? 'text-emerald-400 bg-emerald-500/10'
+                            : 'text-amber-400 bg-amber-500/10'
+                        }`}
+                      >
+                        {tsk.status === 'completed' ? 'منفذة' : 'مستحقة'}
+                      </span>
+                    </div>
+                  ))}
+                {allTasks.filter((t) => t.customer_id === selectedCustomer.id).length === 0 && (
+                  <p className="text-[11px] text-slate-500">لا توجد مهام</p>
+                )}
               </div>
             </div>
 

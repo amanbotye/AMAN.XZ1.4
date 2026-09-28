@@ -65,26 +65,29 @@ import { LoginScreen } from './components/auth/LoginScreen';
 import { CreateAccountScreen } from './components/auth/CreateAccountScreen';
 import { PasswordRecoveryScreen } from './components/auth/PasswordRecoveryScreen';
 
-// Customer Screens (04 - 10)
+// Customer Screens (04 - 11)
 import { CustomerHomeScreen } from './components/customer/CustomerHomeScreen';
 import { CustomerNumbersScreen } from './components/customer/CustomerNumbersScreen';
 import { CustomerProtectionRequestsScreen } from './components/customer/CustomerProtectionRequestsScreen';
 import { CustomerProtectionsScreen } from './components/customer/CustomerProtectionsScreen';
+import { CustomerRenewalScreen } from './components/customer/CustomerRenewalScreen';
 import { CustomerNotificationsScreen } from './components/customer/CustomerNotificationsScreen';
 import { CustomerAccountScreen } from './components/customer/CustomerAccountScreen';
 
-// Admin Screens (11 - 21)
+// Admin Screens (12 - 21)
 import { AdminDashboardScreen } from './components/admin/AdminDashboardScreen';
 import { AdminCustomersScreen } from './components/admin/AdminCustomersScreen';
 import { AdminCustomerNumbersScreen } from './components/admin/AdminCustomerNumbersScreen';
 import { AdminProtectionRequestsScreen } from './components/admin/AdminProtectionRequestsScreen';
 import { AdminProtectionsScreen } from './components/admin/AdminProtectionsScreen';
 import { AdminPaymentTasksScreen } from './components/admin/AdminPaymentTasksScreen';
+import { AdminCompaniesScreen } from './components/admin/AdminCompaniesScreen';
 import { AdminTelecomProvidersScreen } from './components/admin/AdminTelecomProvidersScreen';
 import { AdminPaymentMethodsScreen } from './components/admin/AdminPaymentMethodsScreen';
 import { AdminNotificationsScreen } from './components/admin/AdminNotificationsScreen';
 import { AdminAuditLogsScreen } from './components/admin/AdminAuditLogsScreen';
 import { AdminSystemSettingsScreen } from './components/admin/AdminSystemSettingsScreen';
+import { AdminAuditAndSettingsScreen } from './components/admin/AdminAuditAndSettingsScreen';
 
 const SUPABASE_URL = 'https://pvgmtufzvwkdvtbtcijn.supabase.co';
 const SUPABASE_ANON_KEY =
@@ -137,7 +140,9 @@ export default function App() {
 
   // Navigation
   const [authView, setAuthView] = useState<'login' | 'signup' | 'forgot_password'>('login');
-  const [customerTab, setCustomerTab] = useState<'home' | 'numbers' | 'requests' | 'protections' | 'notifications' | 'account'>('home');
+  const [customerTab, setCustomerTab] = useState<
+    'home' | 'numbers' | 'requests' | 'protections' | 'renewal' | 'notifications' | 'account'
+  >('home');
   const [adminTab, setAdminTab] = useState<
     | 'dashboard'
     | 'customers'
@@ -145,11 +150,13 @@ export default function App() {
     | 'requests'
     | 'protections'
     | 'tasks'
+    | 'companies'
     | 'providers'
     | 'payment_methods'
     | 'notifications'
     | 'audit'
     | 'settings'
+    | 'audit_settings'
   >('dashboard');
 
   // Direct Screen Jump Selector for prompt verification
@@ -500,29 +507,29 @@ export default function App() {
     }
   };
 
-  // 21 Screen Navigator Map
+  // 21 Screen Navigator Map strictly according to AMAN.XZ1.4 prompt
   const SCREEN_LIST = [
     { id: 1, name: 'SCREEN 01 — تسجيل الدخول (Login)', type: 'auth', view: 'login' },
-    { id: 2, name: 'SCREEN 02 — إنشاء حساب جديد (Sign Up)', type: 'auth', view: 'signup' },
-    { id: 3, name: 'SCREEN 03 — استعادة كلمة المرور (Recovery)', type: 'auth', view: 'forgot_password' },
-    { id: 4, name: 'SCREEN 04 — تغيير كلمة المرور (Change Pass)', type: 'customer', tab: 'account' },
+    { id: 2, name: 'SCREEN 02 — إنشاء حساب جديد (Create Account)', type: 'auth', view: 'signup' },
+    { id: 3, name: 'SCREEN 03 — استعادة كلمة المرور (Password Recovery)', type: 'auth', view: 'forgot_password' },
+    { id: 4, name: 'SCREEN 04 — تغيير كلمة المرور (Change Password)', type: 'customer', tab: 'account' },
     { id: 5, name: 'SCREEN 05 — الرئيسية للعميل (Customer Home)', type: 'customer', tab: 'home' },
-    { id: 6, name: 'SCREEN 06 — أرقامي المسجلة (Customer Numbers)', type: 'customer', tab: 'numbers' },
+    { id: 6, name: 'SCREEN 06 — أرقامي (My Numbers)', type: 'customer', tab: 'numbers' },
     { id: 7, name: 'SCREEN 07 — طلبات الحماية (Protection Requests)', type: 'customer', tab: 'requests' },
-    { id: 8, name: 'SCREEN 08 — حماياتي (Protections)', type: 'customer', tab: 'protections' },
-    { id: 9, name: 'SCREEN 09 — إشعارات العميل (Notifications)', type: 'customer', tab: 'notifications' },
-    { id: 10, name: 'SCREEN 10 — حسابي (Customer Account)', type: 'customer', tab: 'account' },
-    { id: 11, name: 'SCREEN 11 — لوحة تحكم الإدارة (Admin Dashboard)', type: 'admin', tab: 'dashboard' },
-    { id: 12, name: 'SCREEN 12 — إدارة العملاء (Admin Customers)', type: 'admin', tab: 'customers' },
-    { id: 13, name: 'SCREEN 13 — أرقام المشتركين (Admin Numbers)', type: 'admin', tab: 'numbers' },
-    { id: 14, name: 'SCREEN 14 — مراجعة الطلبات (Admin Requests)', type: 'admin', tab: 'requests' },
-    { id: 15, name: 'SCREEN 15 — إدارة الحمايات (Admin Protections)', type: 'admin', tab: 'protections' },
-    { id: 16, name: 'SCREEN 16 — المهام التشغيلية (Payment Tasks)', type: 'admin', tab: 'tasks' },
-    { id: 17, name: 'SCREEN 17 — مشغلو الاتصالات (Telecom Providers)', type: 'admin', tab: 'providers' },
-    { id: 18, name: 'SCREEN 18 — وسائل الدفع (Payment Methods)', type: 'admin', tab: 'payment_methods' },
-    { id: 19, name: 'SCREEN 19 — إشعارات الإدارة (Admin Notifications)', type: 'admin', tab: 'notifications' },
-    { id: 20, name: 'SCREEN 20 — سجل التدقيق (Audit Log)', type: 'admin', tab: 'audit' },
-    { id: 21, name: 'SCREEN 21 — إعدادات النظام والمهام (System Settings)', type: 'admin', tab: 'settings' }
+    { id: 8, name: 'SCREEN 08 — حماياتي (My Protections)', type: 'customer', tab: 'protections' },
+    { id: 9, name: 'SCREEN 09 — تجديد الحماية (Renewal)', type: 'customer', tab: 'renewal' },
+    { id: 10, name: 'SCREEN 10 — إشعارات العميل (Customer Notifications)', type: 'customer', tab: 'notifications' },
+    { id: 11, name: 'SCREEN 11 — حساب العميل (Customer Account)', type: 'customer', tab: 'account' },
+    { id: 12, name: 'SCREEN 12 — الرئيسية للإدارة (Admin Home)', type: 'admin', tab: 'dashboard' },
+    { id: 13, name: 'SCREEN 13 — إدارة العملاء (Customers)', type: 'admin', tab: 'customers' },
+    { id: 14, name: 'SCREEN 14 — أرقام المشتركين (Customer Numbers)', type: 'admin', tab: 'numbers' },
+    { id: 15, name: 'SCREEN 15 — مراجعة طلبات الحماية (Admin Protection Requests)', type: 'admin', tab: 'requests' },
+    { id: 16, name: 'SCREEN 16 — إدارة الحمايات (Admin Protections)', type: 'admin', tab: 'protections' },
+    { id: 17, name: 'SCREEN 17 — المهام التشغيلية (Tasks)', type: 'admin', tab: 'tasks' },
+    { id: 18, name: 'SCREEN 18 — إدارة الشركات والمنظومة (Companies)', type: 'admin', tab: 'companies' },
+    { id: 19, name: 'SCREEN 19 — وسائل الدفع المعتمدة (Payment Methods)', type: 'admin', tab: 'payment_methods' },
+    { id: 20, name: 'SCREEN 20 — إشعارات الإدارة (Admin Notifications)', type: 'admin', tab: 'notifications' },
+    { id: 21, name: 'SCREEN 21 — سجل العمليات وإعدادات النظام (Audit Log & System Settings)', type: 'admin', tab: 'audit_settings' }
   ];
 
   return (
@@ -731,6 +738,8 @@ export default function App() {
                           customers={adminCustomers}
                           protections={allProtectionsAdmin}
                           requests={allRequestsAdmin}
+                          tasks={allTasksAdmin}
+                          companies={providers}
                         />
                       )}
                       {adminTab === 'requests' && (
@@ -755,11 +764,13 @@ export default function App() {
                           onRefresh={loadAdminData}
                         />
                       )}
-                      {adminTab === 'providers' && (
-                        <AdminTelecomProvidersScreen
+                      {(adminTab === 'companies' || adminTab === 'providers') && (
+                        <AdminCompaniesScreen
                           supabase={supabase}
                           providers={providers}
                           prefixes={prefixes}
+                          plans={plans}
+                          taskSettings={taskSettings}
                           onRefresh={loadAdminData}
                         />
                       )}
@@ -778,16 +789,13 @@ export default function App() {
                           onNavigateTab={(t) => setAdminTab(t)}
                         />
                       )}
-                      {adminTab === 'audit' && (
-                        <AdminAuditLogsScreen logs={auditLogs} />
-                      )}
-                      {adminTab === 'settings' && (
-                        <AdminSystemSettingsScreen
+                      {(adminTab === 'audit_settings' || adminTab === 'settings' || adminTab === 'audit') && (
+                        <AdminAuditAndSettingsScreen
                           supabase={supabase}
-                          providers={providers}
-                          taskSettings={taskSettings}
+                          logs={auditLogs}
                           systemSettings={systemSettings}
                           onRefresh={loadAdminData}
+                          initialSection={adminTab === 'audit' ? 'audit' : 'settings'}
                         />
                       )}
                     </div>
@@ -896,6 +904,17 @@ export default function App() {
                           paymentMethods={paymentMethods}
                           onRefresh={() => loadCustomerData(profile.id)}
                           onOpenNewRequest={() => setCustomerTab('requests')}
+                        />
+                      )}
+                      {customerTab === 'renewal' && (
+                        <CustomerRenewalScreen
+                          supabase={supabase}
+                          protections={protections}
+                          plans={plans}
+                          paymentMethods={paymentMethods}
+                          profile={profile}
+                          onRefresh={() => loadCustomerData(profile.id)}
+                          onNavigateToProtections={() => setCustomerTab('protections')}
                         />
                       )}
                       {customerTab === 'notifications' && (
