@@ -7,6 +7,7 @@ import androidx.activity.viewModels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.aman.protection.presentation.auth.AuthViewModel
+import com.aman.protection.presentation.customer.CustomerViewModel
 import com.aman.protection.presentation.main.MainViewModel
 import com.aman.protection.presentation.screens.AmanMainApp
 
@@ -35,12 +36,27 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val customerViewModel: CustomerViewModel by viewModels {
+        object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val app = AmanApplication.instance
+                @Suppress("UNCHECKED_CAST")
+                return CustomerViewModel(
+                    app.customerRepository,
+                    app.customerNumberRepository,
+                    app.phoneValidationService
+                ) as T
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             AmanMainApp(
                 mainViewModel = mainViewModel,
-                authViewModel = authViewModel
+                authViewModel = authViewModel,
+                customerViewModel = customerViewModel
             )
         }
     }

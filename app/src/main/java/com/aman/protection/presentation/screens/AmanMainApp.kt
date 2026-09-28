@@ -5,17 +5,19 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.aman.protection.navigation.AmanDestination
 import com.aman.protection.presentation.auth.AuthViewModel
+import com.aman.protection.presentation.customer.CustomerViewModel
 import com.aman.protection.presentation.main.MainViewModel
 import com.aman.protection.presentation.theme.AmanTheme
 
 /**
  * نقطة العرض والربط الرئيسية للتطبيق:
- * App -> Session -> Auth -> public.users -> User State -> Navigation
+ * App -> Session -> Auth -> public.users -> User State -> Navigation -> Customer Numbers
  */
 @Composable
 fun AmanMainApp(
     mainViewModel: MainViewModel,
-    authViewModel: AuthViewModel
+    authViewModel: AuthViewModel,
+    customerViewModel: CustomerViewModel
 ) {
     val uiState by mainViewModel.uiState.collectAsState()
 
@@ -30,9 +32,12 @@ fun AmanMainApp(
                     onSignOut = mainViewModel::signOut
                 )
             }
-            uiState.destination == AmanDestination.CustomerHome && uiState.currentUser != null -> {
+            (uiState.destination == AmanDestination.CustomerHome ||
+             uiState.destination == AmanDestination.CustomerNumbers ||
+             uiState.destination == AmanDestination.AddCustomerNumber) && uiState.currentUser != null -> {
                 CustomerHomeScreen(
                     user = uiState.currentUser!!,
+                    customerViewModel = customerViewModel,
                     onSignOut = mainViewModel::signOut
                 )
             }
