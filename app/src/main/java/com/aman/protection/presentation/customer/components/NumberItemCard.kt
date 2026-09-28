@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -31,14 +32,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aman.protection.domain.models.CustomerNumber
-import com.aman.protection.presentation.theme.Emerald500
+import com.aman.protection.presentation.theme.Emerald600
 import com.aman.protection.presentation.theme.Navy900
 import com.aman.protection.presentation.theme.Red500
 import com.aman.protection.presentation.theme.Slate100
 import com.aman.protection.presentation.theme.Slate500
+import com.aman.protection.presentation.theme.Slate600
 import com.aman.protection.presentation.theme.Slate700
 import com.aman.protection.presentation.theme.Slate900
 
+/**
+ * بطاقة عرض رقم العميل مع شارة المشغل وحالة الحماية الفعلية
+ * مطابقة للبند 1.5.2 وتوجيهات المرحلة 03
+ */
 @Composable
 fun NumberItemCard(
     number: CustomerNumber,
@@ -61,34 +67,35 @@ fun NumberItemCard(
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon
+            // أيقونة المشغل
             Box(
                 modifier = Modifier
                     .size(42.dp)
-                    .background(Slate100, CircleShape),
+                    .background(
+                        if (number.hasActiveProtection) Emerald600.copy(alpha = 0.12f) else Slate100,
+                        CircleShape
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.PhoneAndroid,
+                    imageVector = if (number.hasActiveProtection) Icons.Default.Shield else Icons.Default.PhoneAndroid,
                     contentDescription = null,
-                    tint = Navy900,
+                    tint = if (number.hasActiveProtection) Emerald600 else Navy900,
                     modifier = Modifier.size(22.dp)
                 )
             }
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Main Info
+            // البيانات الأساسية للرقم
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = number.formattedDisplayNumber,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        fontFamily = FontFamily.Monospace,
-                        color = Slate900
-                    )
-                }
+                Text(
+                    text = number.formattedDisplayNumber,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    fontFamily = FontFamily.Monospace,
+                    color = Slate900
+                )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
@@ -100,18 +107,33 @@ fun NumberItemCard(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // Status Pill
-                    Box(
-                        modifier = Modifier
-                            .background(Color(0xFFECFDF5), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = "مسجل في الحساب",
-                            color = Emerald500,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium
-                        )
+                    // شارة حالة الحماية الفعلية (محمي مقابل غير محمي)
+                    if (number.hasActiveProtection) {
+                        Box(
+                            modifier = Modifier
+                                .background(Color(0xFFDCFCE7), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "محمي 🛡️",
+                                color = Color(0xFF15803D),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .background(Color(0xFFF1F5F9), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "غير محمي",
+                                color = Slate600,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 }
 
@@ -126,7 +148,7 @@ fun NumberItemCard(
                 }
             }
 
-            // Action Buttons
+            // أزرار الإجراءات
             Row {
                 IconButton(onClick = onEditNotes) {
                     Icon(
@@ -136,13 +158,16 @@ fun NumberItemCard(
                         modifier = Modifier.size(20.dp)
                     )
                 }
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "حذف الرقم",
-                        tint = Red500,
-                        modifier = Modifier.size(20.dp)
-                    )
+                // الحذف متاح فقط للأرقام غير المحمية بحماية نشطة
+                if (!number.hasActiveProtection) {
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "حذف الرقم",
+                            tint = Red500,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
         }

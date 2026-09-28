@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -35,7 +34,6 @@ import androidx.compose.ui.window.Dialog
 import com.aman.protection.domain.models.CustomerNumber
 import com.aman.protection.presentation.theme.Emerald600
 import com.aman.protection.presentation.theme.Navy900
-import com.aman.protection.presentation.theme.Slate100
 import com.aman.protection.presentation.theme.Slate50
 import com.aman.protection.presentation.theme.Slate700
 import com.aman.protection.presentation.theme.Slate900
@@ -67,9 +65,9 @@ fun NumberDetailsDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "تفاصيل الرقم",
+                        text = "تفاصيل الرقم والملاحظات",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
+                        fontSize = 17.sp,
                         color = Navy900,
                         modifier = Modifier.weight(1f)
                     )
@@ -118,9 +116,13 @@ fun NumberDetailsDialog(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // Detail Rows
-                DetailRow(label = "المعرف المرجعي", value = number.id)
-                DetailRow(label = "رقم الهاتف المنمط", value = number.normalizedPhoneNumber)
-                DetailRow(label = "حالة الرقم", value = if (number.isLiveActive) "نشط" else "معطل")
+                DetailRow(
+                    label = "حالة الحماية",
+                    value = if (number.hasActiveProtection) "محمي باشتراك نشط 🛡️" else "غير محمي حالياً"
+                )
+                DetailRow(label = "المعرف المرجعي", value = number.id.take(8) + "...")
+                DetailRow(label = "الرقم المنمط", value = number.normalizedPhoneNumber)
+                DetailRow(label = "حالة الرقم في الحساب", value = if (number.isLiveActive) "نشط" else "معطل")
 
                 Spacer(modifier = Modifier.height(14.dp))
 
@@ -144,29 +146,27 @@ fun NumberDetailsDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Action Buttons
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Button(
-                        onClick = onSaveNotes,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(44.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
-                        enabled = !isUpdatingNotes
-                    ) {
-                        if (isUpdatingNotes) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Text(
-                                text = "حفظ الملاحظات",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
-                            )
-                        }
+                Button(
+                    onClick = onSaveNotes,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
+                    enabled = !isUpdatingNotes
+                ) {
+                    if (isUpdatingNotes) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = "حفظ الملاحظات",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
                     }
                 }
             }
@@ -186,14 +186,13 @@ private fun DetailRow(label: String, value: String) {
             text = "$label:",
             fontSize = 11.sp,
             color = Slate700,
-            modifier = Modifier.width(110.dp)
+            modifier = Modifier.width(115.dp)
         )
         Text(
             text = value,
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
-            color = Slate900,
-            fontFamily = FontFamily.Monospace
+            color = Slate900
         )
     }
 }

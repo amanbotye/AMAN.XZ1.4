@@ -14,6 +14,7 @@ data class CustomerNumber(
     val detectedPrefix: String,
     val status: NumberStatus = NumberStatus.ACTIVE,
     val notes: String? = null,
+    val hasActiveProtection: Boolean = false,
     val isDeleted: Boolean = false,
     val createdAt: String? = null,
     val updatedAt: String? = null

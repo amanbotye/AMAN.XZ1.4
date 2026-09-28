@@ -22,10 +22,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -33,7 +34,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -43,8 +43,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aman.protection.domain.models.User
@@ -56,11 +58,15 @@ import com.aman.protection.presentation.theme.Emerald600
 import com.aman.protection.presentation.theme.Navy900
 import com.aman.protection.presentation.theme.Red600
 import com.aman.protection.presentation.theme.Slate100
-import com.aman.protection.presentation.theme.Slate300
 import com.aman.protection.presentation.theme.Slate50
+import com.aman.protection.presentation.theme.Slate600
 import com.aman.protection.presentation.theme.Slate700
 import com.aman.protection.presentation.theme.Slate900
 
+/**
+ * شاشة أرقامي للعميل — إدارة الأرقام المسجلة
+ * وفق البند 1.5.2 وتوجيهات المرحلة 03
+ */
 @Composable
 fun CustomerNumbersScreen(
     user: User,
@@ -69,6 +75,7 @@ fun CustomerNumbersScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    // التنقل إلى شاشة إضافة رقم
     if (uiState.currentTab == CustomerScreenTab.ADD_NUMBER) {
         AddNumberScreen(
             viewModel = viewModel,
@@ -87,68 +94,51 @@ fun CustomerNumbersScreen(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            // Header Bar
-            Card(
+            // شريط العنوان العلوي لقسم الأرقام
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = Navy900)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
+                Column {
+                    Text(
+                        text = "أرقامي المسجلة",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = Navy900
+                    )
+                    Text(
+                        text = "إدارة أرقام الهواتف وتجهيزها للحماية",
+                        fontSize = 11.sp,
+                        color = Slate600
+                    )
+                }
+
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Navy900.copy(alpha = 0.08f))
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp)
-                            .background(Emerald600, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(10.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = user.displayName,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
-                        )
-                        Text(
-                            text = "بوابة العميل • ${uiState.numbers.size} أرقام مسجلة",
-                            color = Color(0xFF94A3B8),
-                            fontSize = 11.sp
-                        )
-                    }
-
-                    IconButton(onClick = onSignOut) {
-                        Icon(
-                            imageVector = Icons.Default.ExitToApp,
-                            contentDescription = "خروج",
-                            tint = Color(0xFFEF4444)
-                        )
-                    }
+                    Text(
+                        text = "${uiState.numbers.size} أرقام",
+                        color = Navy900,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Feedback Toast / Banner
+            // تنبيهات النجاح
             if (uiState.successMessage != null) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 12.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFECFDF5))
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFDCFCE7))
                 ) {
                     Row(
                         modifier = Modifier
@@ -165,7 +155,7 @@ fun CustomerNumbersScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = uiState.successMessage ?: "",
-                            color = Emerald600,
+                            color = Color(0xFF15803D),
                             fontSize = 12.sp,
                             modifier = Modifier.weight(1f)
                         )
@@ -184,13 +174,14 @@ fun CustomerNumbersScreen(
                 }
             }
 
-            if (uiState.errorMessage != null) {
+            // تنبيهات الخطأ السطحية (عند وجود أرقام بالفعل)
+            if (uiState.errorMessage != null && uiState.numbers.isNotEmpty()) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 12.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF2F2))
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFEE2E2))
                 ) {
                     Row(
                         modifier = Modifier
@@ -198,6 +189,13 @@ fun CustomerNumbersScreen(
                             .padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = Red600,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = uiState.errorMessage ?: "",
                             color = Red600,
@@ -219,7 +217,7 @@ fun CustomerNumbersScreen(
                 }
             }
 
-            // Quick Add Number Button
+            // زر إضافة رقم هاتف جديد
             Button(
                 onClick = { viewModel.setTab(CustomerScreenTab.ADD_NUMBER) },
                 modifier = Modifier
@@ -245,7 +243,7 @@ fun CustomerNumbersScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Search and Company Filters
+            // شريط البحث والتصفية
             OutlinedTextField(
                 value = uiState.searchQuery,
                 onValueChange = viewModel::onSearchQueryChanged,
@@ -267,7 +265,7 @@ fun CustomerNumbersScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Operator Filter Chips Row
+            // أزرار تصفية المشغلين (الكل، يمن موبايل، يو، سبأفون، واي)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -300,22 +298,83 @@ fun CustomerNumbersScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Numbers List or Empty State
+            // معالجة حالات الواجهة: تحميل، خطأ، حالة فارغة، أو قائمة الأرقام
             when {
-                uiState.isLoading -> {
+                uiState.isLoading && uiState.numbers.isEmpty() -> {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(
-                            color = Emerald600,
-                            modifier = Modifier.size(36.dp)
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(
+                                color = Emerald600,
+                                modifier = Modifier.size(36.dp),
+                                strokeWidth = 3.dp
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "جاري تحميل أرقامك...",
+                                color = Slate600,
+                                fontSize = 12.sp
+                            )
+                        }
                     }
                 }
-                uiState.filteredNumbers.isEmpty() -> {
+
+                // حالة الخطأ عند فشل الجلب وعدم وجود أرقام
+                uiState.errorMessage != null && uiState.numbers.isEmpty() -> {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = Red600,
+                                modifier = Modifier.size(40.dp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "تعذر تحميل قائمة الأرقام",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = Navy900
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = uiState.errorMessage ?: "حدث خطأ في الاتصال بقاعدة البيانات",
+                                fontSize = 12.sp,
+                                color = Slate600,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = { viewModel.loadData(user.id) },
+                                colors = ButtonDefaults.buttonColors(containerColor = Navy900),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("إعادة المحاولة", color = Color.White, fontSize = 13.sp)
+                            }
+                        }
+                    }
+                }
+
+                // حالة القائمة الفارغة بالكامل
+                uiState.numbers.isEmpty() -> {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -345,25 +404,67 @@ fun CustomerNumbersScreen(
                             }
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = if (uiState.numbers.isEmpty()) "لا توجد أرقام مسجلة حتى الآن" else "لا توجد نتائج مطابقة للبحث",
+                                text = "لا توجد أرقام مسجلة حتى الآن",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
                                 color = Slate900
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = if (uiState.numbers.isEmpty())
-                                    "أضف رقم هاتفك المحمول لبدء إدارته وحمايته وفق المرجع المعتمد."
-                                else
-                                    "جرب البحث برقم آخر أو إزالة التصفية.",
+                                text = "أضف أرقام هواتفك المحمولة للبدء في إدارتها وطلب الحماية لها.",
                                 fontSize = 12.sp,
                                 color = Slate700,
+                                textAlign = TextAlign.Center,
                                 modifier = Modifier.padding(horizontal = 16.dp),
                                 lineHeight = 18.sp
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = { viewModel.setTab(CustomerScreenTab.ADD_NUMBER) },
+                                colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("إضافة رقم جديد الآن", color = Color.White, fontSize = 13.sp)
+                            }
+                        }
+                    }
+                }
+
+                // حالة عدم وجود نتائج بعد البحث أو التصفية
+                uiState.filteredNumbers.isEmpty() -> {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = "لا توجد نتائج مطابقة للبحث",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Slate900
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "جرب البحث برقم آخر أو إلغاء تصفية المشغل.",
+                                fontSize = 12.sp,
+                                color = Slate600
                             )
                         }
                     }
                 }
+
+                // عرض القائمة الحقيقية للأرقام
                 else -> {
                     LazyColumn(
                         modifier = Modifier
@@ -387,7 +488,7 @@ fun CustomerNumbersScreen(
             }
         }
 
-        // Details & Edit Notes Dialog
+        // نافذة عرض التفاصيل وتعديل الملاحظات
         if (uiState.selectedNumberDetails != null) {
             NumberDetailsDialog(
                 number = uiState.selectedNumberDetails!!,

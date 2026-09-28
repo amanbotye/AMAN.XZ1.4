@@ -5,6 +5,7 @@ import com.aman.protection.core.AmanError
 import com.aman.protection.core.AmanResult
 import com.aman.protection.data.models.CompanyDto
 import com.aman.protection.data.models.CustomerNumberDto
+import com.aman.protection.data.models.ProtectionDto
 import com.aman.protection.data.models.RpcAddNumberResultDto
 import com.aman.protection.data.remote.SupabaseProvider
 import com.aman.protection.data.service.PhoneValidationService
@@ -40,7 +41,23 @@ class CustomerNumberRepositoryImpl(
             // 1. جلب قائمة الشركات المدعومة لربط تفاصيل الشركة بالرقم
             val companiesMap = phoneValidationService.getSupportedCompanies().associateBy { it.id }
 
-            // 2. قراءة أرقام العميل من جدول customer_numbers
+            // 2. قراءة معرفات الأرقام التي تملك حماية نشطة وفعالة من جدول protections
+            val activeProtectedNumberIds = try {
+                val activeList = SupabaseProvider.postgrest.from(AmanConstants.TABLE_PROTECTIONS)
+                    .select {
+                        filter {
+                            eq("customer_id", user.id)
+                            eq("status", "active")
+                            eq("is_deleted", false)
+                        }
+                    }
+                    .decodeList<ProtectionDto>()
+                activeList.map { it.customerNumberId }.toSet()
+            } catch (_: Exception) {
+                emptySet<String>()
+            }
+
+            // 3. قراءة أرقام العميل من جدول customer_numbers
             val dtoList = SupabaseProvider.postgrest.from(AmanConstants.TABLE_CUSTOMER_NUMBERS)
                 .select {
                     filter {
@@ -53,7 +70,11 @@ class CustomerNumberRepositoryImpl(
 
             val domainList = dtoList.map { dto ->
                 val company = companiesMap[dto.companyId]
-                dto.toDomain().copy(company = company)
+                val isProtected = activeProtectedNumberIds.contains(dto.id)
+                dto.toDomain().copy(
+                    company = company,
+                    hasActiveProtection = isProtected
+                )
             }
 
             _numbersList.value = domainList
