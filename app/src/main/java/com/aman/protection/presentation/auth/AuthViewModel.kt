@@ -11,12 +11,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel الخاص بعمليات المصادقة والحسابات:
+ * ViewModel الخاص بعمليات المصادقة والحسابات وفق المصفوفة:
  * - AUTH-01: تسجيل الدخول (البريد الإلكتروني أو اسم المستخدم + كلمة المرور)
- * - AUTH-02: إنشاء حساب (الاسم، اسم المستخدم، البريد، كلمة المرور وتأكيدها)
+ * - ADM-LOGIN: طبقة دخول الإدارة والتحقق الصارم من الحساب الإداري
+ * - AUTH-02: إنشاء حساب (الاسم، اسم المستخدم، البريد، كلمة المرور وتأكيدها — بدون هاتف أو OTP)
  * - AUTH-03: استعادة كلمة المرور (البريد الإلكتروني)
  * - AUTH-04: تغيير كلمة المرور (كلمة المرور الحالية، الجديدة، وتأكيدها)
- * - تسجيل الخروج المرتبط بـ AUTH-01
+ * - 1.4.5: تسجيل الخروج المرتبط بـ AUTH-01
  */
 class AuthViewModel(
     private val authRepository: AuthRepository
@@ -122,6 +123,15 @@ class AuthViewModel(
         )
     }
 
+    fun setAdminLogin(isAdmin: Boolean) {
+        _uiState.value = _uiState.value.copy(
+            isAdminLogin = isAdmin,
+            generalError = null,
+            emailError = null,
+            passwordError = null
+        )
+    }
+
     fun setMode(mode: AuthMode) {
         _uiState.value = _uiState.value.copy(
             mode = mode,
@@ -160,16 +170,15 @@ class AuthViewModel(
     }
 
     /**
-     * AUTH-01: تسجيل الدخول
+     * AUTH-01: تسجيل الدخول (مع دعم طبقة ADM-LOGIN)
      * الحقول: البريد الإلكتروني أو اسم المستخدم + كلمة المرور
-     * الأزرار: دخول، إنشاء حساب، استعادة كلمة المرور
+     * الأزرار: دخول / دخول الإدارة، إنشاء حساب، استعادة كلمة المرور
      * الحالات: عادية، حقول ناقصة، بيانات غير صحيحة، تحميل، نجاح، فشل الاتصال، الحساب غير مسموح له بالدخول
      */
     private fun performLogin() {
         val state = _uiState.value
         val identifier = state.email.trim()
         val password = state.password
-
         var hasError = false
         var emailError: String? = null
         var passwordError: String? = null
@@ -179,7 +188,6 @@ class AuthViewModel(
             emailError = "البريد الإلكتروني أو اسم المستخدم مطلوب"
             hasError = true
         }
-
         if (password.isBlank()) {
             passwordError = "كلمة المرور مطلوبة"
             hasError = true
@@ -196,9 +204,11 @@ class AuthViewModel(
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, generalError = null, successMessage = null)
-
-            val result = authRepository.signInWithEmail(identifier, password)
-
+            val result = authRepository.signInWithEmail(
+                identifier = identifier,
+                password = password,
+                requireAdmin = state.isAdminLogin
+            )
             when (result) {
                 is AmanResult.Success -> {
                     _uiState.value = _uiState.value.copy(isLoading = false, isSuccess = true)
@@ -207,7 +217,7 @@ class AuthViewModel(
                     val errorMessage = when (val err = result.error) {
                         is AmanError.AccountSuspended -> "الحساب غير مسموح له بالدخول أو تم إيقافه"
                         is AmanError.NetworkError -> "تعذر الاتصال بالخادم، يرجى التحقق من اتصال الإنترنت"
-                        is AmanError.InvalidCredentials -> "بيانات غير صحيحة. يرجى التحقق من البريد الإلكتروني أو اسم المستخدم وكلمة المرور"
+                        is AmanError.InvalidCredentials -> err.messageAr
                         else -> err.messageAr
                     }
                     _uiState.value = _uiState.value.copy(
@@ -223,10 +233,10 @@ class AuthViewModel(
     }
 
     /**
-     * AUTH-02: إنشاء حساب
+     * AUTH-02: إنشاء حساب عميل جديد
      * الحقول: البريد الإلكتروني، كلمة المرور، تأكيد كلمة المرور، الاسم الكامل، اسم المستخدم
      * الأزرار: إنشاء حساب، العودة إلى تسجيل الدخول
-     * القيود: لا يوجد رقم هاتف إلزامي، لا يوجد OTP، لا يوجد تحقق من ملكية رقم
+     * القيود الصارمة: لا يوجد رقم هاتف إلزامي، لا يوجد OTP، لا يوجد تحقق من ملكية رقم
      */
     private fun performSignUp() {
         val state = _uiState.value
@@ -297,9 +307,7 @@ class AuthViewModel(
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, generalError = null, successMessage = null)
-
             val result = authRepository.signUpWithEmail(email, password, fullName, username)
-
             when (result) {
                 is AmanResult.Success -> {
                     _uiState.value = _uiState.value.copy(
@@ -343,9 +351,7 @@ class AuthViewModel(
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, generalError = null, successMessage = null)
-
             val result = authRepository.resetPasswordForEmail(email)
-
             when (result) {
                 is AmanResult.Success -> {
                     _uiState.value = _uiState.value.copy(
@@ -369,7 +375,7 @@ class AuthViewModel(
     /**
      * AUTH-04: تغيير كلمة المرور
      * الحقول: كلمة المرور الحالية عند طلبها، كلمة المرور الجديدة، تأكيد كلمة المرور الجديدة
-     * الأزرار: حفظ
+     * الأزرار: حفظ، العودة إلى تسجيل الدخول
      * الحالات: تحميل، نجاح، فشل
      */
     private fun performChangePassword() {
@@ -409,12 +415,10 @@ class AuthViewModel(
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, generalError = null, successMessage = null)
-
             val result = authRepository.changePassword(
                 currentPassword = currentPassword.ifBlank { null },
                 newPassword = newPassword
             )
-
             when (result) {
                 is AmanResult.Success -> {
                     _uiState.value = _uiState.value.copy(

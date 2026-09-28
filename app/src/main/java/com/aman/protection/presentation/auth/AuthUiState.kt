@@ -12,10 +12,11 @@ enum class AuthMode {
 }
 
 /**
- * حالة واجهة شاشات المصادقة والحسابات (AUTH-01 إلى AUTH-04)
+ * حالة واجهة شاشات المصادقة والحسابات (AUTH-01 إلى AUTH-04 + ADM-LOGIN)
  */
 data class AuthUiState(
     val mode: AuthMode = AuthMode.LOGIN,
+    val isAdminLogin: Boolean = false, // طبقة ADM-LOGIN لدخول الإدارة
 
     // AUTH-01 & AUTH-02 & AUTH-03
     val email: String = "",

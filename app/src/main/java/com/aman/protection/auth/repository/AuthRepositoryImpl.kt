@@ -2,13 +2,12 @@ package com.aman.protection.auth.repository
 
 import com.aman.protection.auth.model.AuthState
 import com.aman.protection.auth.model.UserSession
-import com.aman.protection.core.AmanConstants
 import com.aman.protection.core.AmanError
 import com.aman.protection.core.AmanResult
+import com.aman.protection.data.models.UserType
 import com.aman.protection.data.remote.SupabaseProvider
 import com.aman.protection.data.repository.UserRepository
 import io.github.jan.supabase.gotrue.providers.builtin.Email
-import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +17,8 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /**
- * تنفيذ مستودع المصادقة وجلسات Supabase
+ * تنفيذ مستودع المصادقة وجلسات Supabase وفق مصفوفة الشاشات:
+ * AUTH-01 + ADM-LOGIN + AUTH-02 + AUTH-03 + AUTH-04 + 1.4.5 تسجيل الخروج
  */
 class AuthRepositoryImpl(
     private val userRepository: UserRepository
@@ -27,14 +27,17 @@ class AuthRepositoryImpl(
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     override val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
-    override suspend fun signInWithEmail(identifier: String, password: String): AmanResult<UserSession> = withContext(Dispatchers.IO) {
+    override suspend fun signInWithEmail(
+        identifier: String,
+        password: String,
+        requireAdmin: Boolean
+    ): AmanResult<UserSession> = withContext(Dispatchers.IO) {
         _authState.value = AuthState.Loading
         try {
             val trimmed = identifier.trim()
             val targetEmail = if (trimmed.contains("@")) {
                 trimmed
             } else {
-                // البحث عن البريد الإلكتروني المقترن باسم المستخدم
                 val lookupResult = userRepository.findEmailByUsername(trimmed)
                 if (lookupResult is AmanResult.Success && !lookupResult.data.isNullOrBlank()) {
                     lookupResult.data!!
@@ -64,6 +67,15 @@ class AuthRepositoryImpl(
                 if (userResult is AmanResult.Success) {
                     val userProfile = userResult.data
                     if (userProfile.status.canAccess && !userProfile.isDeleted) {
+                        // ADM-LOGIN: التحقق الصارم من أن الحساب مدير ورفض الدخول للحساب غير الإداري
+                        if (requireAdmin && userProfile.userType != UserType.ADMIN) {
+                            try { SupabaseProvider.auth.signOut() } catch (_: Exception) {}
+                            userRepository.clearUserProfile()
+                            val error = AmanError.InvalidCredentials("هذا الحساب غير مصرح له بالدخول كمدير. يُسمح فقط لحسابات الإدارة المعتمدة.")
+                            _authState.value = AuthState.Error(error)
+                            return@withContext AmanResult.Error(error)
+                        }
+
                         _authState.value = AuthState.Authenticated(session, userProfile)
                         AmanResult.Success(session)
                     } else {
@@ -99,6 +111,7 @@ class AuthRepositoryImpl(
     ): AmanResult<UserSession> = withContext(Dispatchers.IO) {
         _authState.value = AuthState.Loading
         try {
+            // AUTH-02: تسجيل مستخدم عميل في Supabase Auth
             SupabaseProvider.auth.signUpWith(Email) {
                 this.email = email.trim()
                 this.password = password
@@ -109,8 +122,8 @@ class AuthRepositoryImpl(
                 }
             }
 
-            // بعد التسجيل، تسجيل الدخول وتحديث البيانات في جدول users
-            val signInResult = signInWithEmail(email, password)
+            // بعد التسجيل، تسجيل الدخول وتحديث البيانات في جدول public.users
+            val signInResult = signInWithEmail(email, password, requireAdmin = false)
             if (signInResult is AmanResult.Success) {
                 try {
                     userRepository.updateUserProfile(
@@ -163,7 +176,6 @@ class AuthRepositoryImpl(
             SupabaseProvider.auth.modifyUser {
                 this.password = newPassword
             }
-
             AmanResult.Success(Unit)
         } catch (e: Exception) {
             AmanResult.Error(AmanError.fromThrowable(e))

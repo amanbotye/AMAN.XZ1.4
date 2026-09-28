@@ -4,6 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,8 +24,10 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Security
@@ -71,8 +75,12 @@ import com.aman.protection.presentation.theme.Slate700
 import com.aman.protection.presentation.theme.Slate900
 
 /**
- * شاشة المصادقة الرئيسية (تسجيل الدخول، إنشاء حساب، استعادة كلمة المرور)
- * مطابقة للمرجع الوظيفي AMAN.XZ.txt — البنود 1.4.1 و 1.4.2 و 1.4.3
+ * شاشة المصادقة الرئيسية والحسابات (Android Native Jetpack Compose):
+ * - AUTH-01: تسجيل الدخول (البريد الإلكتروني أو اسم المستخدم + كلمة المرور)
+ * - ADM-LOGIN: طبقة دخول الإدارة والتحقق الصارم من الحساب الإداري
+ * - AUTH-02: إنشاء حساب (الاسم، اسم المستخدم، البريد، كلمة المرور وتأكيدها)
+ * - AUTH-03: استعادة كلمة المرور
+ * - AUTH-04: تغيير كلمة المرور
  */
 @Composable
 fun AuthScreen(viewModel: AuthViewModel) {
@@ -104,13 +112,13 @@ fun AuthScreen(viewModel: AuthViewModel) {
                     modifier = Modifier
                         .size(60.dp)
                         .clip(CircleShape)
-                        .background(Navy900),
+                        .background(if (uiState.isAdminLogin && uiState.isLoginMode) Amber500 else Navy900),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Security,
+                        imageVector = if (uiState.isAdminLogin && uiState.isLoginMode) Icons.Default.AdminPanelSettings else Icons.Default.Security,
                         contentDescription = "شعار أمان",
-                        tint = Amber500,
+                        tint = if (uiState.isAdminLogin && uiState.isLoginMode) Navy900 else Amber500,
                         modifier = Modifier.size(34.dp)
                     )
                 }
@@ -127,20 +135,23 @@ fun AuthScreen(viewModel: AuthViewModel) {
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = when (uiState.mode) {
-                        AuthMode.LOGIN -> "تسجيل الدخول إلى حسابك في أمان"
-                        AuthMode.SIGN_UP -> "إنشاء حساب عميل جديد"
-                        AuthMode.FORGOT_PASSWORD -> "استعادة الوصول إلى حسابك"
-                        AuthMode.CHANGE_PASSWORD -> "تغيير كلمة المرور الخاصة بحسابك"
+                    text = when {
+                        uiState.isLoginMode && uiState.isAdminLogin -> "بوابة دخول إدارة النظام (ADM-LOGIN)"
+                        uiState.isLoginMode -> "تسجيل الدخول إلى حسابك في أمان"
+                        uiState.isSignUpMode -> "إنشاء حساب عميل جديد"
+                        uiState.isForgotPasswordMode -> "استعادة كلمة المرور"
+                        uiState.isChangePasswordMode -> "تغيير كلمة المرور الخاصة بحسابك"
+                        else -> "تسجيل الدخول"
                     },
-                    color = Slate600,
+                    color = if (uiState.isAdminLogin && uiState.isLoginMode) Amber500 else Slate600,
                     fontSize = 13.sp,
+                    fontWeight = if (uiState.isAdminLogin && uiState.isLoginMode) FontWeight.Bold else FontWeight.Normal,
                     textAlign = TextAlign.Center
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // بطاقة رسائل النجاح العامة (مثل استعادة كلمة المرور)
+                // بطاقة رسائل النجاح العامة (مثل استعادة كلمة المرور أو إنشاء الحساب)
                 AnimatedVisibility(
                     visible = !uiState.successMessage.isNullOrBlank(),
                     enter = fadeIn(),
@@ -176,7 +187,7 @@ fun AuthScreen(viewModel: AuthViewModel) {
                     }
                 }
 
-                // بطاقة رسائل الخطأ العامة (فشل الاتصال، خطأ الخادم، الحساب موقوف)
+                // بطاقة رسائل الخطأ العامة (فشل الاتصال، خطأ الخادم، الحساب موقوف، رفض غير الإداري)
                 AnimatedVisibility(
                     visible = !uiState.generalError.isNullOrBlank(),
                     enter = fadeIn(),
@@ -225,7 +236,7 @@ fun AuthScreen(viewModel: AuthViewModel) {
 }
 
 /**
- * نموذج تسجيل الدخول — البند 1.4.1
+ * نموذج تسجيل الدخول — البند 1.4.1 (AUTH-01) مع طبقة ADM-LOGIN لدخول الإدارة
  */
 @Composable
 private fun LoginForm(
@@ -233,6 +244,68 @@ private fun LoginForm(
     uiState: AuthUiState
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
+        // مفتاح التبديل بين دخول العميل ودخول الإدارة (ADM-LOGIN كطبقة من AUTH-01)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+                .background(Slate100, RoundedCornerShape(10.dp))
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (!uiState.isAdminLogin) Navy900 else Color.Transparent)
+                    .clickable { viewModel.setAdminLogin(false) }
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = if (!uiState.isAdminLogin) Color.White else Slate600,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "دخول العميل",
+                        color = if (!uiState.isAdminLogin) Color.White else Slate700,
+                        fontSize = 12.sp,
+                        fontWeight = if (!uiState.isAdminLogin) FontWeight.Bold else FontWeight.Medium
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (uiState.isAdminLogin) Amber500 else Color.Transparent)
+                    .clickable { viewModel.setAdminLogin(true) }
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.AdminPanelSettings,
+                        contentDescription = null,
+                        tint = if (uiState.isAdminLogin) Navy900 else Slate600,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "دخول الإدارة",
+                        color = if (uiState.isAdminLogin) Navy900 else Slate700,
+                        fontSize = 12.sp,
+                        fontWeight = if (uiState.isAdminLogin) FontWeight.Bold else FontWeight.Medium
+                    )
+                }
+            }
+        }
+
         // البريد الإلكتروني أو اسم المستخدم
         OutlinedTextField(
             value = uiState.email,
@@ -240,7 +313,12 @@ private fun LoginForm(
             label = { Text("البريد الإلكتروني أو اسم المستخدم") },
             placeholder = { Text("example@domain.com أو اسم المستخدم") },
             leadingIcon = {
-                Icon(Icons.Default.Email, contentDescription = null, tint = Slate500, modifier = Modifier.size(20.dp))
+                Icon(
+                    imageVector = Icons.Default.Email,
+                    contentDescription = null,
+                    tint = if (uiState.isAdminLogin) Amber500 else Slate500,
+                    modifier = Modifier.size(20.dp)
+                )
             },
             isError = uiState.emailError != null,
             supportingText = {
@@ -256,8 +334,8 @@ private fun LoginForm(
             ),
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Navy900,
-                focusedLabelColor = Navy900
+                focusedBorderColor = if (uiState.isAdminLogin) Amber500 else Navy900,
+                focusedLabelColor = if (uiState.isAdminLogin) Amber500 else Navy900
             )
         )
 
@@ -269,7 +347,12 @@ private fun LoginForm(
             onValueChange = viewModel::onPasswordChanged,
             label = { Text("كلمة المرور") },
             leadingIcon = {
-                Icon(Icons.Default.Lock, contentDescription = null, tint = Slate500, modifier = Modifier.size(20.dp))
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = null,
+                    tint = if (uiState.isAdminLogin) Amber500 else Slate500,
+                    modifier = Modifier.size(20.dp)
+                )
             },
             trailingIcon = {
                 IconButton(onClick = viewModel::togglePasswordVisibility) {
@@ -297,19 +380,19 @@ private fun LoginForm(
             keyboardActions = KeyboardActions(onDone = { viewModel.submit() }),
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Navy900,
-                focusedLabelColor = Navy900
+                focusedBorderColor = if (uiState.isAdminLogin) Amber500 else Navy900,
+                focusedLabelColor = if (uiState.isAdminLogin) Amber500 else Navy900
             )
         )
 
-        // رابط نسيت كلمة المرور
+        // رابط نسيت كلمة المرور (استعادة كلمة المرور AUTH-03)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End
         ) {
             TextButton(onClick = { viewModel.setMode(AuthMode.FORGOT_PASSWORD) }) {
                 Text(
-                    text = "نسيت كلمة المرور؟",
+                    text = "استعادة كلمة المرور",
                     color = Slate700,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
@@ -319,26 +402,28 @@ private fun LoginForm(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // زر الدخول
+        // زر الدخول (دخول / دخول الإدارة)
         Button(
             onClick = viewModel::submit,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
             shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (uiState.isAdminLogin) Amber500 else Emerald600
+            ),
             enabled = !uiState.isLoading
         ) {
             if (uiState.isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(22.dp),
-                    color = Color.White,
+                    color = if (uiState.isAdminLogin) Navy900 else Color.White,
                     strokeWidth = 2.dp
                 )
             } else {
                 Text(
-                    text = "تسجيل الدخول",
-                    color = Color.White,
+                    text = if (uiState.isAdminLogin) "دخول الإدارة" else "دخول",
+                    color = if (uiState.isAdminLogin) Navy900 else Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp
                 )
@@ -347,23 +432,53 @@ private fun LoginForm(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // الانتقال لإنشاء حساب جديد
-        TextButton(
-            onClick = { viewModel.setMode(AuthMode.SIGN_UP) },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = "ليس لديك حساب؟ إنشاء حساب عميل جديد",
-                color = Navy900,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold
-            )
+        // الانتقال لإنشاء حساب جديد (AUTH-02) للعملاء فقط
+        if (!uiState.isAdminLogin) {
+            TextButton(
+                onClick = { viewModel.setMode(AuthMode.SIGN_UP) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "ليس لديك حساب؟ إنشاء حساب",
+                    color = Navy900,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        } else {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Slate100),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = Slate600,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "الدخول الإداري مخصص للمشرفين والمدراء المعتمدين في النظام.",
+                        color = Slate600,
+                        fontSize = 11.sp
+                    )
+                }
+            }
         }
     }
 }
 
 /**
- * نموذج إنشاء الحساب — البند 1.4.2
+ * نموذج إنشاء حساب عميل جديد — البند 1.4.2 (AUTH-02)
+ * القيود المعتمدة في المصفوفة:
+ * - لا يوجد رقم هاتف إلزامي
+ * - لا يوجد OTP
+ * - لا يوجد تحقق من ملكية رقم
  */
 @Composable
 private fun SignUpForm(
@@ -371,12 +486,39 @@ private fun SignUpForm(
     uiState: AuthUiState
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
+        // شارة توضيحية لعدم اشتراط رقم هاتف أو OTP
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFEFF6FF)),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    tint = Navy900,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "التسجيل مباشر بالبريد الإلكتروني — لا يشترط رقم هاتف أو OTP.",
+                    color = Navy900,
+                    fontSize = 11.sp
+                )
+            }
+        }
+
         // الاسم الكامل
         OutlinedTextField(
             value = uiState.fullName,
             onValueChange = viewModel::onFullNameChanged,
             label = { Text("الاسم الكامل") },
-            placeholder = { Text("الاسم الثلاثي أو الرباعي") },
+            placeholder = { Text("أدخل اسمك الثلاثي أو الرباعي") },
             leadingIcon = {
                 Icon(Icons.Default.Person, contentDescription = null, tint = Slate500, modifier = Modifier.size(20.dp))
             },
@@ -388,7 +530,10 @@ private fun SignUpForm(
             },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(10.dp),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Next
+            ),
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Navy900,
@@ -396,14 +541,14 @@ private fun SignUpForm(
             )
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         // اسم المستخدم
         OutlinedTextField(
             value = uiState.username,
             onValueChange = viewModel::onUsernameChanged,
-            label = { Text("اسم المستخدم") },
-            placeholder = { Text("اسم الحساب بالإنجليزية (مثال: ahmed_99)") },
+            label = { Text("اسم المستخدم (Username)") },
+            placeholder = { Text("username_123") },
             leadingIcon = {
                 Icon(Icons.Default.Person, contentDescription = null, tint = Slate500, modifier = Modifier.size(20.dp))
             },
@@ -411,11 +556,16 @@ private fun SignUpForm(
             supportingText = {
                 if (uiState.usernameError != null) {
                     Text(text = uiState.usernameError, color = Red600, fontSize = 11.sp)
+                } else {
+                    Text("أحرف وأرقام إنجليزية فقط (3-30 حرف)", color = Slate500, fontSize = 10.sp)
                 }
             },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(10.dp),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Ascii,
+                imeAction = ImeAction.Next
+            ),
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Navy900,
@@ -423,7 +573,7 @@ private fun SignUpForm(
             )
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         // البريد الإلكتروني
         OutlinedTextField(
@@ -453,7 +603,7 @@ private fun SignUpForm(
             )
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         // كلمة المرور
         OutlinedTextField(
@@ -479,7 +629,7 @@ private fun SignUpForm(
                 if (uiState.passwordError != null) {
                     Text(text = uiState.passwordError, color = Red600, fontSize = 11.sp)
                 } else {
-                    Text("لا تقل عن 6 أحرف أو أرقام", color = Slate500, fontSize = 10.sp)
+                    Text("لا تقل عن 6 أحرف", color = Slate500, fontSize = 10.sp)
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -495,7 +645,7 @@ private fun SignUpForm(
             )
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         // تأكيد كلمة المرور
         OutlinedTextField(
@@ -538,7 +688,7 @@ private fun SignUpForm(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // زر إنشاء الحساب
+        // زر إنشاء حساب
         Button(
             onClick = viewModel::submit,
             modifier = Modifier
@@ -556,7 +706,7 @@ private fun SignUpForm(
                 )
             } else {
                 Text(
-                    text = "إنشاء الحساب",
+                    text = "إنشاء حساب",
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp
@@ -566,13 +716,13 @@ private fun SignUpForm(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // العودة لتسجيل الدخول
+        // زر العودة إلى تسجيل الدخول
         TextButton(
             onClick = { viewModel.setMode(AuthMode.LOGIN) },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                text = "لديك حساب بالفعل؟ تسجيل الدخول",
+                text = "العودة إلى تسجيل الدخول",
                 color = Navy900,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold
@@ -582,7 +732,7 @@ private fun SignUpForm(
 }
 
 /**
- * نموذج استعادة كلمة المرور — البند 1.4.3
+ * نموذج استعادة كلمة المرور — البند 1.4.3 (AUTH-03)
  */
 @Composable
 private fun ForgotPasswordForm(
@@ -591,12 +741,12 @@ private fun ForgotPasswordForm(
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "أدخل بريدك الإلكتروني المسجل في النظام وسنرسل لك رابطاً لإعادة تعيين كلمة المرور الخاصة بك.",
+            text = "أدخل بريدك الإلكتروني المسجل في أمان وسنرسل إليك رابطاً فورياً لإعادة تعيين كلمة المرور.",
             color = Slate600,
             fontSize = 12.sp,
             lineHeight = 18.sp,
             textAlign = TextAlign.Start,
-            modifier = Modifier.padding(bottom = 12.dp)
+            modifier = Modifier.padding(bottom = 16.dp)
         )
 
         // البريد الإلكتروني
@@ -630,14 +780,14 @@ private fun ForgotPasswordForm(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // زر إرسال الرابط
+        // زر إرسال طلب الاستعادة
         Button(
             onClick = viewModel::submit,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
             shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
+            colors = ButtonDefaults.buttonColors(containerColor = Navy900),
             enabled = !uiState.isLoading
         ) {
             if (uiState.isLoading) {
@@ -648,7 +798,7 @@ private fun ForgotPasswordForm(
                 )
             } else {
                 Text(
-                    text = "إرسال رابط الاستعادة",
+                    text = "إرسال طلب الاستعادة",
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp
@@ -658,7 +808,7 @@ private fun ForgotPasswordForm(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // العودة لتسجيل الدخول
+        // العودة إلى تسجيل الدخول
         TextButton(
             onClick = { viewModel.setMode(AuthMode.LOGIN) },
             modifier = Modifier.fillMaxWidth()
@@ -675,9 +825,6 @@ private fun ForgotPasswordForm(
 
 /**
  * نموذج تغيير كلمة المرور — البند 1.4.4 (AUTH-04)
- * الحقول: كلمة المرور الحالية (عند طلبها)، كلمة المرور الجديدة، تأكيد كلمة المرور الجديدة
- * الأزرار: حفظ، العودة إلى تسجيل الدخول
- * الحالات: تحميل، نجاح، فشل
  */
 @Composable
 private fun ChangePasswordForm(
