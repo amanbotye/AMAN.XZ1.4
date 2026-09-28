@@ -49,6 +49,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.aman.protection.domain.models.CustomerNumber
+import com.aman.protection.domain.models.Protection
+import com.aman.protection.domain.models.ProtectionRequest
 import com.aman.protection.domain.models.User
 import com.aman.protection.presentation.customer.CustomerScreenTab
 import com.aman.protection.presentation.customer.CustomerViewModel
@@ -65,12 +68,15 @@ import com.aman.protection.presentation.theme.Slate900
 
 /**
  * شاشة أرقامي للعميل — إدارة الأرقام المسجلة
- * وفق البند 1.5.2 وتوجيهات المرحلة 03
+ * وفق البند 1.5.2 وتوجيهات المرحلة 03 (CUS-02)
  */
 @Composable
 fun CustomerNumbersScreen(
     user: User,
     viewModel: CustomerViewModel,
+    requests: List<ProtectionRequest> = emptyList(),
+    protections: List<Protection> = emptyList(),
+    onRequestProtectionForNumber: ((CustomerNumber) -> Unit)? = null,
     onSignOut: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -488,14 +494,27 @@ fun CustomerNumbersScreen(
             }
         }
 
-        // نافذة عرض التفاصيل وتعديل الملاحظات
+        // نافذة عرض التفاصيل وتعديل الملاحظات وفق CUS-02
         if (uiState.selectedNumberDetails != null) {
+            val currentNumber = uiState.selectedNumberDetails!!
+            val relatedReqs = requests.filter { it.customerNumberId == currentNumber.id }
+            val relatedProts = protections.filter { it.customerNumberId == currentNumber.id }
+
             NumberDetailsDialog(
-                number = uiState.selectedNumberDetails!!,
+                number = currentNumber,
                 notesText = uiState.editingNotesText,
                 onNotesChanged = viewModel::onEditingNotesChanged,
                 onSaveNotes = viewModel::saveNotes,
                 isUpdatingNotes = uiState.isUpdatingNotes,
+                relatedRequests = relatedReqs,
+                relatedProtections = relatedProts,
+                onDelete = { viewModel.deleteNumber(currentNumber.id) },
+                onRequestProtection = if (onRequestProtectionForNumber != null && !currentNumber.hasActiveProtection) {
+                    {
+                        viewModel.selectNumberForDetails(null)
+                        onRequestProtectionForNumber(currentNumber)
+                    }
+                } else null,
                 onDismiss = { viewModel.selectNumberForDetails(null) }
             )
         }

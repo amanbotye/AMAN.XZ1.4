@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aman.protection.data.models.UserDto
 import com.aman.protection.data.models.toDomain
+import com.aman.protection.navigation.AmanDestination
 import com.aman.protection.presentation.customer.CustomerViewModel
 import com.aman.protection.presentation.customer.screens.CustomerAccountScreen
 import com.aman.protection.presentation.customer.screens.CustomerNumbersScreen
@@ -51,7 +52,9 @@ import com.aman.protection.presentation.payment.screens.PaymentMethodsScreen
 import com.aman.protection.presentation.protection.CustomerProtectionTab
 import com.aman.protection.presentation.protection.CustomerProtectionViewModel
 import com.aman.protection.presentation.protection.screens.CreateProtectionRequestScreen
-import com.aman.protection.presentation.protection.screens.MyRequestsAndProtectionsScreen
+import com.aman.protection.presentation.protection.screens.CustomerProtectionsScreen
+import com.aman.protection.presentation.protection.screens.CustomerRenewalScreen
+import com.aman.protection.presentation.protection.screens.CustomerRequestsScreen
 import com.aman.protection.presentation.protection.screens.PlansCatalogScreen
 import com.aman.protection.presentation.theme.Emerald600
 import com.aman.protection.presentation.theme.Navy900
@@ -59,11 +62,19 @@ import com.aman.protection.presentation.theme.Slate50
 
 /**
  * الشاشة الرئيسية لتطبيق العميل (بوابة العميل)
- * مطابقة للمرجع الوظيفي AMAN.XZ.txt — البند 1.5 والمرحلة 02
+ * مطابقة لمصفوفة الشاشات AMAN_XZ1_Screen_Matrix_COMPREHENSIVE.xlsx:
+ * - CUS-01: الرئيسية (ملخص الأرقام، ملخص الحمايات، الإجراءات، الإشعارات)
+ * - CUS-02: أرقامي (قائمة، تفاصيل، إضافة، تحقق، كشف الشركة، ملاحظات، حذف)
+ * - CUS-03: طلبات الحماية (قائمة الطلبات، إنشاء طلب، مراجعة، PENDING)
+ * - CUS-04: حماياتي (نشطة، تحتاج تجديد، منتهية، تفاصيل الحماية)
+ * - CUS-05: التجديد
+ * - CUS-06: الإشعارات
+ * - CUS-07: حسابي
  */
 @Composable
 fun CustomerHomeScreen(
     user: UserDto,
+    initialDestination: AmanDestination? = null,
     customerViewModel: CustomerViewModel,
     protectionViewModel: CustomerProtectionViewModel,
     paymentMethodViewModel: PaymentMethodViewModel,
@@ -75,8 +86,17 @@ fun CustomerHomeScreen(
     val protectionState by protectionViewModel.uiState.collectAsState()
     val notifState by notificationsViewModel.uiState.collectAsState()
 
-    // 0: الرئيسية (Overview), 1: أرقامي, 2: الحمايات والطلبات, 3: دليل الباقات, 4: طرق الدفع, 5: الإشعارات, 6: حسابي
-    var selectedTopTab by remember { mutableIntStateOf(0) }
+    // 0: الرئيسية (CUS-01), 1: أرقامي (CUS-02), 2: طلبات الحماية (CUS-03), 3: حماياتي (CUS-04), 4: دليل الباقات, 5: طرق الدفع, 6: الإشعارات (CUS-06), 7: حسابي (CUS-07)
+    val defaultTab = when (initialDestination) {
+        AmanDestination.CustomerHome -> 0
+        AmanDestination.CustomerNumbers -> 1
+        AmanDestination.CustomerRequests -> 2
+        AmanDestination.CustomerProtections -> 3
+        AmanDestination.CustomerNotifications -> 6
+        AmanDestination.CustomerAccount -> 7
+        else -> 0
+    }
+    var selectedTopTab by remember(initialDestination) { mutableIntStateOf(defaultTab) }
 
     LaunchedEffect(user.id) {
         customerViewModel.loadData(user.id)
@@ -85,10 +105,20 @@ fun CustomerHomeScreen(
         notificationsViewModel.loadClientNotifications(user.id)
     }
 
+    // عرض شاشة إنشاء طلب حماية عند طلبها
     if (protectionState.currentTab == CustomerProtectionTab.CREATE_REQUEST) {
         CreateProtectionRequestScreen(
             viewModel = protectionViewModel,
-            onBack = { protectionViewModel.setTab(CustomerProtectionTab.MY_PROTECTIONS) }
+            onBack = { protectionViewModel.setTab(CustomerProtectionTab.MY_REQUESTS) }
+        )
+        return
+    }
+
+    // عرض شاشة التجديد عند طلبها
+    if (protectionState.currentTab == CustomerProtectionTab.RENEWAL && protectionState.selectedProtectionForRenewal != null) {
+        CustomerRenewalScreen(
+            protection = protectionState.selectedProtectionForRenewal!!,
+            viewModel = protectionViewModel
         )
         return
     }
@@ -117,7 +147,7 @@ fun CustomerHomeScreen(
                         modifier = Modifier
                             .size(38.dp)
                             .background(Emerald600, CircleShape)
-                            .clickable { selectedTopTab = 6 },
+                            .clickable { selectedTopTab = 7 },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -133,7 +163,7 @@ fun CustomerHomeScreen(
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .clickable { selectedTopTab = 6 }
+                            .clickable { selectedTopTab = 7 }
                     ) {
                         Text(
                             text = customerState.customer?.user?.displayName ?: domainUser.displayName,
@@ -158,7 +188,7 @@ fun CustomerHomeScreen(
                 }
             }
 
-            // شريط التبويبات العلوي للعميل
+            // شريط التبويبات العلوي للعميل (وفق مصفوفة الشاشات)
             ScrollableTabRow(
                 selectedTabIndex = selectedTopTab,
                 containerColor = Color.White,
@@ -174,26 +204,85 @@ fun CustomerHomeScreen(
                 Tab(
                     selected = selectedTopTab == 1,
                     onClick = { selectedTopTab = 1 },
-                    text = { Text("أرقامي", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("أرقامي", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            if (customerState.numbers.isNotEmpty()) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "(${customerState.numbers.size})",
+                                    fontSize = 11.sp,
+                                    color = Emerald600
+                                )
+                            }
+                        }
+                    }
                 )
                 Tab(
                     selected = selectedTopTab == 2,
                     onClick = { selectedTopTab = 2 },
-                    text = { Text("الحمايات والطلبات", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("طلبات الحماية", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            val pendingCount = protectionState.requests.count { it.isPending }
+                            if (pendingCount > 0) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(Color(0xFFF59E0B))
+                                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                                ) {
+                                    Text(
+                                        text = "$pendingCount",
+                                        color = Color.White,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
                 )
                 Tab(
                     selected = selectedTopTab == 3,
                     onClick = { selectedTopTab = 3 },
-                    text = { Text("دليل الباقات", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("حماياتي", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            val activeCount = protectionState.protections.count { it.isLiveActive }
+                            if (activeCount > 0) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(Emerald600)
+                                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                                ) {
+                                    Text(
+                                        text = "$activeCount",
+                                        color = Color.White,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
                 )
                 Tab(
                     selected = selectedTopTab == 4,
                     onClick = { selectedTopTab = 4 },
-                    text = { Text("طرق الدفع", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                    text = { Text("دليل الباقات", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                 )
                 Tab(
                     selected = selectedTopTab == 5,
                     onClick = { selectedTopTab = 5 },
+                    text = { Text("طرق الدفع", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                )
+                Tab(
+                    selected = selectedTopTab == 6,
+                    onClick = { selectedTopTab = 6 },
                     text = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("الإشعارات", fontWeight = FontWeight.Bold, fontSize = 12.sp)
@@ -217,8 +306,8 @@ fun CustomerHomeScreen(
                     }
                 )
                 Tab(
-                    selected = selectedTopTab == 6,
-                    onClick = { selectedTopTab = 6 },
+                    selected = selectedTopTab == 7,
+                    onClick = { selectedTopTab = 7 },
                     text = { Text("حسابي", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                 )
             }
@@ -239,43 +328,58 @@ fun CustomerHomeScreen(
                                 protectionViewModel.loadBaseData()
                             },
                             onNavigateToNumbers = { selectedTopTab = 1 },
-                            onNavigateToProtections = { selectedTopTab = 2 },
-                            onNavigateToPlans = { selectedTopTab = 3 },
-                            onNavigateToNotifications = { selectedTopTab = 5 },
-                            onNavigateToAccount = { selectedTopTab = 6 }
+                            onNavigateToProtections = { selectedTopTab = 3 },
+                            onNavigateToPlans = { selectedTopTab = 4 },
+                            onNavigateToNotifications = { selectedTopTab = 6 },
+                            onNavigateToAccount = { selectedTopTab = 7 }
                         )
                     }
                     1 -> {
                         CustomerNumbersScreen(
                             user = domainUser,
                             viewModel = customerViewModel,
+                            requests = protectionState.requests,
+                            protections = protectionState.protections,
+                            onRequestProtectionForNumber = { num ->
+                                protectionViewModel.startNewRequest(num)
+                            },
                             onSignOut = onSignOut
                         )
                     }
                     2 -> {
-                        MyRequestsAndProtectionsScreen(
+                        CustomerRequestsScreen(
                             viewModel = protectionViewModel,
-                            onBack = { selectedTopTab = 0 }
+                            onCreateNewRequest = {
+                                protectionViewModel.startNewRequest()
+                            }
                         )
                     }
                     3 -> {
+                        CustomerProtectionsScreen(
+                            viewModel = protectionViewModel,
+                            onStartRenewal = { prot ->
+                                protectionViewModel.startRenewalForProtection(prot)
+                            }
+                        )
+                    }
+                    4 -> {
                         PlansCatalogScreen(
                             plans = protectionState.allPlans,
                             onBack = { selectedTopTab = 0 }
                         )
                     }
-                    4 -> {
+                    5 -> {
                         PaymentMethodsScreen(
                             viewModel = paymentMethodViewModel
                         )
                     }
-                    5 -> {
+                    6 -> {
                         CustomerNotificationsScreen(
                             userId = user.id,
                             viewModel = notificationsViewModel
                         )
                     }
-                    6 -> {
+                    7 -> {
                         CustomerAccountScreen(
                             user = customerState.customer?.user ?: domainUser,
                             viewModel = customerViewModel,

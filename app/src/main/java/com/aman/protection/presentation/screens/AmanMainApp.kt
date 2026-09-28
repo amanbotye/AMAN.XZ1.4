@@ -53,6 +53,7 @@ fun AmanMainApp(
             uiState.currentUser != null && (uiState.currentUser!!.userType == UserType.CUSTOMER || uiState.destination.isCustomerRoute) -> {
                 CustomerHomeScreen(
                     user = uiState.currentUser!!,
+                    initialDestination = uiState.destination,
                     customerViewModel = customerViewModel,
                     protectionViewModel = protectionViewModel,
                     paymentMethodViewModel = paymentMethodViewModel,

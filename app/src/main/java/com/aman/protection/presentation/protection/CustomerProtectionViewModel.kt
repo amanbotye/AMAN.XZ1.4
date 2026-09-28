@@ -2,7 +2,9 @@ package com.aman.protection.presentation.protection
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aman.protection.AmanApplication
 import com.aman.protection.core.AmanResult
+import com.aman.protection.data.repository.CustomerNumberRepository
 import com.aman.protection.data.repository.ProtectionPlanRepository
 import com.aman.protection.data.repository.ProtectionRepository
 import com.aman.protection.data.repository.ProtectionRequestRepository
@@ -15,10 +17,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/**
+ * ViewModel المخصص لإدارة طلبات واشتراكات الحماية للعميل
+ * وفق مصفوفة الشاشات: CUS-03 (طلبات الحماية) و CUS-04 (حماياتي) و CUS-05 (التجديد)
+ */
 class CustomerProtectionViewModel(
     private val protectionPlanRepository: ProtectionPlanRepository,
     private val protectionRequestRepository: ProtectionRequestRepository,
-    private val protectionRepository: ProtectionRepository
+    private val protectionRepository: ProtectionRepository,
+    private val customerNumberRepository: CustomerNumberRepository = AmanApplication.instance.customerNumberRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CustomerProtectionUiState())
@@ -28,28 +35,36 @@ class CustomerProtectionViewModel(
         loadBaseData()
     }
 
+    /**
+     * تحميل البيانات التشغيلية للعميل من قاعدة البيانات الفعلية
+     */
     fun loadBaseData() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             // 1. جلب باقات الحماية
             protectionPlanRepository.fetchPlans()
-
             // 2. جلب طرق الدفع
             protectionPlanRepository.fetchPaymentMethods()
-
             // 3. جلب طلبات الحماية للعميل
             protectionRequestRepository.fetchCustomerRequests()
-
             // 4. جلب الحمايات النشطة
             protectionRepository.fetchCustomerProtections()
+            // 5. جلب أرقام العميل لاختيار الرقم عند إنشاء طلب جديد
+            customerNumberRepository.fetchCustomerNumbers()
+
+            val numbers = customerNumberRepository.numbersList.value
+            val plans = protectionPlanRepository.plansList.value
+            val pms = protectionPlanRepository.paymentMethodsList.value
+            val reqs = protectionRequestRepository.customerRequests.value
+            val prots = protectionRepository.customerProtections.value
 
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
-                allPlans = protectionPlanRepository.plansList.value,
-                paymentMethods = protectionPlanRepository.paymentMethodsList.value,
-                requests = protectionRequestRepository.customerRequests.value,
-                protections = protectionRepository.customerProtections.value
+                allPlans = plans,
+                paymentMethods = pms,
+                customerNumbers = numbers,
+                requests = reqs,
+                protections = prots
             )
         }
     }
@@ -64,21 +79,46 @@ class CustomerProtectionViewModel(
     }
 
     /**
-     * إعداد نموذج طلب حماية جديد لرقم معين مع فحص التعارض
+     * فتح شاشة إنشاء طلب حماية جديد (CUS-03)
      */
-    fun startRequestForNumber(number: CustomerNumber) {
-        val hasActive = protectionRepository.hasActiveProtectionForNumber(number.id)
-        val hasPending = protectionRequestRepository.hasPendingRequestForNumber(number.id)
+    fun startNewRequest(number: CustomerNumber? = null) {
+        val targetNumber = number ?: _uiState.value.customerNumbers.firstOrNull { !it.hasActiveProtection }
+            ?: _uiState.value.customerNumbers.firstOrNull()
 
+        if (targetNumber != null) {
+            onSelectNumber(targetNumber)
+        } else {
+            val defaultPlan = _uiState.value.allPlans.firstOrNull()
+            val defaultPm = _uiState.value.paymentMethods.firstOrNull()
+            _uiState.value = _uiState.value.copy(
+                selectedNumber = null,
+                selectedPlan = defaultPlan,
+                selectedPaymentMethod = defaultPm,
+                transferReference = "",
+                customerNote = "",
+                validationWarning = null,
+                currentTab = CustomerProtectionTab.CREATE_REQUEST,
+                errorMessage = null,
+                successMessage = null
+            )
+        }
+    }
+
+    /**
+     * اختيار رقم هاتف لطلب الحماية مع فحص التعارض وفق المرجع
+     */
+    fun onSelectNumber(number: CustomerNumber) {
+        val hasActive = protectionRepository.hasActiveProtectionForNumber(number.id) || number.hasActiveProtection
+        val hasPending = protectionRequestRepository.hasPendingRequestForNumber(number.id)
         val warning = when {
-            hasActive -> "هذا الرقم محمي بالفعل بحماية نشطة ولا يحتاج لطلب حماية جديد."
+            hasActive -> "هذا الرقم محمي بالفعل باشتراك نشط ولا يحتاج لطلب حماية جديد."
             hasPending -> "يوجد طلب حماية قيد المراجعة لهذا الرقم حالياً. يرجى انتظار قرار الإدارة."
             else -> null
         }
 
         val availablePlans = protectionPlanRepository.getPlansForCompany(number.companyId)
-        val defaultPlan = availablePlans.firstOrNull() ?: protectionPlanRepository.plansList.value.firstOrNull()
-        val defaultPm = protectionPlanRepository.paymentMethodsList.value.firstOrNull()
+        val defaultPlan = availablePlans.firstOrNull() ?: _uiState.value.allPlans.firstOrNull()
+        val defaultPm = _uiState.value.selectedPaymentMethod ?: _uiState.value.paymentMethods.firstOrNull()
 
         _uiState.value = _uiState.value.copy(
             selectedNumber = number,
@@ -100,8 +140,8 @@ class CustomerProtectionViewModel(
         val availablePlans = protectionPlanRepository.getPlansForCompany(protection.companyId)
         val defaultPlan = availablePlans.find { it.id == protection.packageId }
             ?: availablePlans.firstOrNull()
-            ?: protectionPlanRepository.plansList.value.firstOrNull()
-        val defaultPm = protectionPlanRepository.paymentMethodsList.value.firstOrNull()
+            ?: _uiState.value.allPlans.firstOrNull()
+        val defaultPm = _uiState.value.paymentMethods.firstOrNull()
 
         _uiState.value = _uiState.value.copy(
             selectedProtectionForRenewal = protection,
@@ -133,19 +173,32 @@ class CustomerProtectionViewModel(
 
     /**
      * إرسال طلب الحماية عبر rpc_create_protection_request
+     * - تحويل الطلب إلى قيد المراجعة (PENDING) بعد الإرسال
+     * - عدم إنشاء حماية عند إنشاء الطلب
      */
     fun submitProtectionRequest() {
         val state = _uiState.value
-
         // إذا كان في وضع التجديد
         if (state.currentTab == CustomerProtectionTab.RENEWAL && state.selectedProtectionForRenewal != null) {
             submitRenewalRequest()
             return
         }
 
-        val number = state.selectedNumber ?: return
-        val plan = state.selectedPlan ?: return
-        val pm = state.selectedPaymentMethod ?: return
+        val number = state.selectedNumber
+        if (number == null) {
+            _uiState.value = state.copy(errorMessage = "يرجى اختيار رقم الهاتف المراد حمايته")
+            return
+        }
+        val plan = state.selectedPlan
+        if (plan == null) {
+            _uiState.value = state.copy(errorMessage = "يرجى اختيار باقة الحماية")
+            return
+        }
+        val pm = state.selectedPaymentMethod
+        if (pm == null) {
+            _uiState.value = state.copy(errorMessage = "يرجى اختيار طريقة الدفع")
+            return
+        }
 
         if (state.validationWarning != null) {
             _uiState.value = state.copy(errorMessage = state.validationWarning)
@@ -159,12 +212,13 @@ class CustomerProtectionViewModel(
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSubmittingRequest = true, errorMessage = null)
+
             val result = protectionRequestRepository.createProtectionRequest(
                 customerNumberId = number.id,
                 packageId = plan.id,
                 paymentMethodId = pm.id,
-                transferReference = state.transferReference,
-                customerNote = state.customerNote.takeIf { it.isNotBlank() }
+                transferReference = state.transferReference.trim(),
+                customerNote = state.customerNote.trim().takeIf { it.isNotBlank() }
             )
 
             when (result) {
@@ -173,6 +227,9 @@ class CustomerProtectionViewModel(
                     _uiState.value = _uiState.value.copy(
                         isSubmittingRequest = false,
                         currentTab = CustomerProtectionTab.MY_REQUESTS,
+                        selectedNumber = null,
+                        transferReference = "",
+                        customerNote = "",
                         successMessage = "تم إرسال طلب الحماية بنجاح، وهو الآن بحالة (قيد المراجعة PENDING) لدى الإدارة."
                     )
                 }
@@ -205,12 +262,13 @@ class CustomerProtectionViewModel(
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSubmittingRequest = true, errorMessage = null)
+
             val result = protectionRepository.createRenewalRequest(
                 protectionId = protection.id,
                 packageId = plan.id,
                 paymentMethodId = pm.id,
-                transferReference = state.transferReference,
-                customerNote = state.customerNote.takeIf { it.isNotBlank() }
+                transferReference = state.transferReference.trim(),
+                customerNote = state.customerNote.trim().takeIf { it.isNotBlank() }
             )
 
             when (result) {
@@ -220,6 +278,8 @@ class CustomerProtectionViewModel(
                         isSubmittingRequest = false,
                         currentTab = CustomerProtectionTab.MY_PROTECTIONS,
                         selectedProtectionForRenewal = null,
+                        transferReference = "",
+                        customerNote = "",
                         successMessage = "تم إرسال طلب التجديد بنجاح، وسيتم تمديد الحماية فور مراجعة الإدارة."
                     )
                 }
