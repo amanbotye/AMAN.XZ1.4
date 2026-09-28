@@ -2,6 +2,8 @@ package com.aman.protection.presentation.customer
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aman.protection.AmanApplication
+import com.aman.protection.auth.repository.AuthRepository
 import com.aman.protection.core.AmanResult
 import com.aman.protection.data.repository.CustomerNumberRepository
 import com.aman.protection.data.repository.CustomerRepository
@@ -19,7 +21,8 @@ import kotlinx.coroutines.launch
 class CustomerViewModel(
     private val customerRepository: CustomerRepository,
     private val customerNumberRepository: CustomerNumberRepository,
-    private val phoneValidationService: PhoneValidationService
+    private val phoneValidationService: PhoneValidationService,
+    private val authRepository: AuthRepository = AmanApplication.instance.authRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CustomerUiState())
@@ -289,6 +292,107 @@ class CustomerViewModel(
         _uiState.value = _uiState.value.copy(
             profileErrorMessage = null,
             profileSuccessMessage = null
+        )
+    }
+
+    // --- AUTH-04 تغيير كلمة المرور ---
+    fun onCurrentPasswordChanged(password: String) {
+        _uiState.value = _uiState.value.copy(
+            currentPasswordInput = password,
+            changePasswordError = null
+        )
+    }
+
+    fun onNewPasswordChanged(password: String) {
+        _uiState.value = _uiState.value.copy(
+            newPasswordInput = password,
+            changePasswordError = null
+        )
+    }
+
+    fun onConfirmNewPasswordChanged(password: String) {
+        _uiState.value = _uiState.value.copy(
+            confirmNewPasswordInput = password,
+            changePasswordError = null
+        )
+    }
+
+    fun toggleCurrentPasswordVisibility() {
+        _uiState.value = _uiState.value.copy(
+            isCurrentPasswordVisible = !_uiState.value.isCurrentPasswordVisible
+        )
+    }
+
+    fun toggleNewPasswordVisibility() {
+        _uiState.value = _uiState.value.copy(
+            isNewPasswordVisible = !_uiState.value.isNewPasswordVisible
+        )
+    }
+
+    fun toggleConfirmNewPasswordVisibility() {
+        _uiState.value = _uiState.value.copy(
+            isConfirmNewPasswordVisible = !_uiState.value.isConfirmNewPasswordVisible
+        )
+    }
+
+    fun changePassword() {
+        val state = _uiState.value
+        val current = state.currentPasswordInput
+        val newPass = state.newPasswordInput
+        val confirm = state.confirmNewPasswordInput
+
+        if (newPass.isBlank()) {
+            _uiState.value = state.copy(changePasswordError = "كلمة المرور الجديدة مطلوبة")
+            return
+        }
+        if (newPass.length < 6) {
+            _uiState.value = state.copy(changePasswordError = "كلمة المرور يجب ألا تقل عن 6 أحرف")
+            return
+        }
+        if (confirm != newPass) {
+            _uiState.value = state.copy(changePasswordError = "كلمتا المرور غير متطابقتين")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isChangingPassword = true,
+                changePasswordError = null,
+                changePasswordSuccess = null
+            )
+
+            val result = authRepository.changePassword(
+                currentPassword = current.ifBlank { null },
+                newPassword = newPass
+            )
+
+            when (result) {
+                is AmanResult.Success -> {
+                    _uiState.value = _uiState.value.copy(
+                        isChangingPassword = false,
+                        currentPasswordInput = "",
+                        newPasswordInput = "",
+                        confirmNewPasswordInput = "",
+                        changePasswordSuccess = "تم تغيير كلمة المرور بنجاح"
+                    )
+                }
+                is AmanResult.Error -> {
+                    _uiState.value = _uiState.value.copy(
+                        isChangingPassword = false,
+                        changePasswordError = result.error.messageAr
+                    )
+                }
+                else -> {
+                    _uiState.value = _uiState.value.copy(isChangingPassword = false)
+                }
+            }
+        }
+    }
+
+    fun clearChangePasswordFeedback() {
+        _uiState.value = _uiState.value.copy(
+            changePasswordError = null,
+            changePasswordSuccess = null
         )
     }
 

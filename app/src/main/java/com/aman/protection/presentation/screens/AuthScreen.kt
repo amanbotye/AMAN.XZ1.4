@@ -131,6 +131,7 @@ fun AuthScreen(viewModel: AuthViewModel) {
                         AuthMode.LOGIN -> "تسجيل الدخول إلى حسابك في أمان"
                         AuthMode.SIGN_UP -> "إنشاء حساب عميل جديد"
                         AuthMode.FORGOT_PASSWORD -> "استعادة الوصول إلى حسابك"
+                        AuthMode.CHANGE_PASSWORD -> "تغيير كلمة المرور الخاصة بحسابك"
                     },
                     color = Slate600,
                     fontSize = 13.sp,
@@ -216,6 +217,7 @@ fun AuthScreen(viewModel: AuthViewModel) {
                     AuthMode.LOGIN -> LoginForm(viewModel = viewModel, uiState = uiState)
                     AuthMode.SIGN_UP -> SignUpForm(viewModel = viewModel, uiState = uiState)
                     AuthMode.FORGOT_PASSWORD -> ForgotPasswordForm(viewModel = viewModel, uiState = uiState)
+                    AuthMode.CHANGE_PASSWORD -> ChangePasswordForm(viewModel = viewModel, uiState = uiState)
                 }
             }
         }
@@ -231,12 +233,12 @@ private fun LoginForm(
     uiState: AuthUiState
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        // البريد الإلكتروني
+        // البريد الإلكتروني أو اسم المستخدم
         OutlinedTextField(
             value = uiState.email,
             onValueChange = viewModel::onEmailChanged,
-            label = { Text("البريد الإلكتروني") },
-            placeholder = { Text("example@domain.com") },
+            label = { Text("البريد الإلكتروني أو اسم المستخدم") },
+            placeholder = { Text("example@domain.com أو اسم المستخدم") },
             leadingIcon = {
                 Icon(Icons.Default.Email, contentDescription = null, tint = Slate500, modifier = Modifier.size(20.dp))
             },
@@ -382,6 +384,33 @@ private fun SignUpForm(
             supportingText = {
                 if (uiState.fullNameError != null) {
                     Text(text = uiState.fullNameError, color = Red600, fontSize = 11.sp)
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(10.dp),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Navy900,
+                focusedLabelColor = Navy900
+            )
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // اسم المستخدم
+        OutlinedTextField(
+            value = uiState.username,
+            onValueChange = viewModel::onUsernameChanged,
+            label = { Text("اسم المستخدم") },
+            placeholder = { Text("اسم الحساب بالإنجليزية (مثال: ahmed_99)") },
+            leadingIcon = {
+                Icon(Icons.Default.Person, contentDescription = null, tint = Slate500, modifier = Modifier.size(20.dp))
+            },
+            isError = uiState.usernameError != null,
+            supportingText = {
+                if (uiState.usernameError != null) {
+                    Text(text = uiState.usernameError, color = Red600, fontSize = 11.sp)
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -630,6 +659,196 @@ private fun ForgotPasswordForm(
         Spacer(modifier = Modifier.height(14.dp))
 
         // العودة لتسجيل الدخول
+        TextButton(
+            onClick = { viewModel.setMode(AuthMode.LOGIN) },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "العودة إلى تسجيل الدخول",
+                color = Navy900,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+/**
+ * نموذج تغيير كلمة المرور — البند 1.4.4 (AUTH-04)
+ * الحقول: كلمة المرور الحالية (عند طلبها)، كلمة المرور الجديدة، تأكيد كلمة المرور الجديدة
+ * الأزرار: حفظ، العودة إلى تسجيل الدخول
+ * الحالات: تحميل، نجاح، فشل
+ */
+@Composable
+private fun ChangePasswordForm(
+    viewModel: AuthViewModel,
+    uiState: AuthUiState
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "قم بتعيين كلمة مرور جديدة لحسابك. يجب ألا تقل عن 6 أحرف أو أرقام.",
+            color = Slate600,
+            fontSize = 12.sp,
+            lineHeight = 18.sp,
+            textAlign = TextAlign.Start,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        // كلمة المرور الحالية (عند طلبها)
+        OutlinedTextField(
+            value = uiState.currentPassword,
+            onValueChange = viewModel::onCurrentPasswordChanged,
+            label = { Text("كلمة المرور الحالية (عند طلبها)") },
+            placeholder = { Text("أدخل كلمة المرور الحالية") },
+            leadingIcon = {
+                Icon(Icons.Default.Lock, contentDescription = null, tint = Slate500, modifier = Modifier.size(20.dp))
+            },
+            trailingIcon = {
+                IconButton(onClick = viewModel::toggleCurrentPasswordVisibility) {
+                    Icon(
+                        imageVector = if (uiState.isCurrentPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        contentDescription = "إظهار/إخفاء كلمة المرور الحالية",
+                        tint = Slate500,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            },
+            visualTransformation = if (uiState.isCurrentPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            isError = uiState.currentPasswordError != null,
+            supportingText = {
+                if (uiState.currentPasswordError != null) {
+                    Text(text = uiState.currentPasswordError, color = Red600, fontSize = 11.sp)
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(10.dp),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Next
+            ),
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Navy900,
+                focusedLabelColor = Navy900
+            )
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // كلمة المرور الجديدة
+        OutlinedTextField(
+            value = uiState.newPassword,
+            onValueChange = viewModel::onNewPasswordChanged,
+            label = { Text("كلمة المرور الجديدة") },
+            placeholder = { Text("كلمة المرور الجديدة") },
+            leadingIcon = {
+                Icon(Icons.Default.Lock, contentDescription = null, tint = Slate500, modifier = Modifier.size(20.dp))
+            },
+            trailingIcon = {
+                IconButton(onClick = viewModel::toggleNewPasswordVisibility) {
+                    Icon(
+                        imageVector = if (uiState.isNewPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        contentDescription = "إظهار/إخفاء كلمة المرور الجديدة",
+                        tint = Slate500,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            },
+            visualTransformation = if (uiState.isNewPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            isError = uiState.newPasswordError != null,
+            supportingText = {
+                if (uiState.newPasswordError != null) {
+                    Text(text = uiState.newPasswordError, color = Red600, fontSize = 11.sp)
+                } else {
+                    Text("لا تقل عن 6 أحرف أو أرقام", color = Slate500, fontSize = 10.sp)
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(10.dp),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Next
+            ),
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Navy900,
+                focusedLabelColor = Navy900
+            )
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // تأكيد كلمة المرور الجديدة
+        OutlinedTextField(
+            value = uiState.confirmNewPassword,
+            onValueChange = viewModel::onConfirmNewPasswordChanged,
+            label = { Text("تأكيد كلمة المرور الجديدة") },
+            placeholder = { Text("إعادة إدخال كلمة المرور الجديدة") },
+            leadingIcon = {
+                Icon(Icons.Default.Lock, contentDescription = null, tint = Slate500, modifier = Modifier.size(20.dp))
+            },
+            trailingIcon = {
+                IconButton(onClick = viewModel::toggleConfirmNewPasswordVisibility) {
+                    Icon(
+                        imageVector = if (uiState.isConfirmNewPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        contentDescription = "إظهار/إخفاء تأكيد كلمة المرور الجديدة",
+                        tint = Slate500,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            },
+            visualTransformation = if (uiState.isConfirmNewPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            isError = uiState.confirmNewPasswordError != null,
+            supportingText = {
+                if (uiState.confirmNewPasswordError != null) {
+                    Text(text = uiState.confirmNewPasswordError, color = Red600, fontSize = 11.sp)
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(10.dp),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(onDone = { viewModel.submit() }),
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Navy900,
+                focusedLabelColor = Navy900
+            )
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // زر الحفظ
+        Button(
+            onClick = viewModel::submit,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            shape = RoundedCornerShape(10.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
+            enabled = !uiState.isLoading
+        ) {
+            if (uiState.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text(
+                    text = "حفظ",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // العودة إلى تسجيل الدخول
         TextButton(
             onClick = { viewModel.setMode(AuthMode.LOGIN) },
             modifier = Modifier.fillMaxWidth()

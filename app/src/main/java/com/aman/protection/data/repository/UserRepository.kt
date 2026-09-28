@@ -16,6 +16,16 @@ interface UserRepository {
     suspend fun fetchUserProfile(userId: String): AmanResult<UserDto>
 
     /**
+     * البحث عن البريد الإلكتروني للمستخدم بواسطة اسم المستخدم
+     */
+    suspend fun findEmailByUsername(username: String): AmanResult<String?>
+
+    /**
+     * تحديث بيانات المستخدم في جدول public.users (الاسم واسم المستخدم)
+     */
+    suspend fun updateUserProfile(userId: String, fullName: String?, username: String?): AmanResult<UserDto>
+
+    /**
      * مسح الملف الشخصي المخزن محلياً عند تسجيل الخروج
      */
     fun clearUserProfile()

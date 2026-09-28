@@ -14,14 +14,19 @@ sealed class AmanError(
         code = "NETWORK_ERROR"
     )
 
-    class InvalidCredentials(technicalMessage: String? = null) : AmanError(
-        messageAr = "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+    class InvalidCredentials(
+        messageAr: String = "بيانات غير صحيحة. يرجى التحقق من البريد الإلكتروني أو اسم المستخدم وكلمة المرور",
+        technicalMessage: String? = null
+    ) : AmanError(
+        messageAr = messageAr,
         technicalMessage = technicalMessage,
         code = "INVALID_CREDENTIALS"
     )
 
-    class AccountSuspended : AmanError(
-        messageAr = "الحساب معطل أو موقوف، يرجى مراجعة الإدارة",
+    class AccountSuspended(
+        messageAr: String = "الحساب غير مسموح له بالدخول أو تم إيقافه"
+    ) : AmanError(
+        messageAr = messageAr,
         code = "ACCOUNT_SUSPENDED"
     )
 

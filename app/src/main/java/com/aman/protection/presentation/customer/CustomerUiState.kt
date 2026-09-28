@@ -38,6 +38,17 @@ data class CustomerUiState(
     val profileErrorMessage: String? = null,
     val profileSuccessMessage: String? = null,
 
+    // AUTH-04 Change Password state
+    val currentPasswordInput: String = "",
+    val newPasswordInput: String = "",
+    val confirmNewPasswordInput: String = "",
+    val isCurrentPasswordVisible: Boolean = false,
+    val isNewPasswordVisible: Boolean = false,
+    val isConfirmNewPasswordVisible: Boolean = false,
+    val isChangingPassword: Boolean = false,
+    val changePasswordError: String? = null,
+    val changePasswordSuccess: String? = null,
+
     // Feedback
     val successMessage: String? = null,
     val errorMessage: String? = null

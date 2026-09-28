@@ -49,7 +49,8 @@ class MainActivity : ComponentActivity() {
                 return CustomerViewModel(
                     app.customerRepository,
                     app.customerNumberRepository,
-                    app.phoneValidationService
+                    app.phoneValidationService,
+                    app.authRepository
                 ) as T
             }
         }

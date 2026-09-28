@@ -31,6 +31,8 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -40,6 +42,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -54,6 +57,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aman.protection.domain.models.User
@@ -301,6 +307,257 @@ fun CustomerAccountScreen(
                     } else {
                         Text(
                             text = "حفظ التعديلات",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // بطاقة تغيير كلمة المرور — AUTH-04
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Navy900.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = Navy900,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = "تغيير كلمة المرور (AUTH-04)",
+                            color = Navy900,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            text = "تحديث كلمة المرور لحماية وتأمين حسابك",
+                            color = Slate500,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // رسالة نجاح تغيير كلمة المرور
+                AnimatedVisibility(
+                    visible = !uiState.changePasswordSuccess.isNullOrBlank(),
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 10.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFDCFCE7))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = Emerald600,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = uiState.changePasswordSuccess ?: "",
+                                color = Color(0xFF15803D),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
+                // رسالة خطأ تغيير كلمة المرور
+                AnimatedVisibility(
+                    visible = !uiState.changePasswordError.isNullOrBlank(),
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 10.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFEE2E2))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = Red600,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = uiState.changePasswordError ?: "",
+                                color = Red600,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
+                // كلمة المرور الحالية عند طلبها
+                OutlinedTextField(
+                    value = uiState.currentPasswordInput,
+                    onValueChange = viewModel::onCurrentPasswordChanged,
+                    label = { Text("كلمة المرور الحالية (عند طلبها)") },
+                    placeholder = { Text("أدخل كلمة المرور الحالية") },
+                    leadingIcon = {
+                        Icon(Icons.Default.Lock, contentDescription = null, tint = Slate500, modifier = Modifier.size(18.dp))
+                    },
+                    trailingIcon = {
+                        IconButton(onClick = viewModel::toggleCurrentPasswordVisibility) {
+                            Icon(
+                                imageVector = if (uiState.isCurrentPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = null,
+                                tint = Slate500,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    },
+                    visualTransformation = if (uiState.isCurrentPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Next
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Navy900,
+                        focusedLabelColor = Navy900
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // كلمة المرور الجديدة
+                OutlinedTextField(
+                    value = uiState.newPasswordInput,
+                    onValueChange = viewModel::onNewPasswordChanged,
+                    label = { Text("كلمة المرور الجديدة") },
+                    placeholder = { Text("لا تقل عن 6 خانات") },
+                    leadingIcon = {
+                        Icon(Icons.Default.Lock, contentDescription = null, tint = Slate500, modifier = Modifier.size(18.dp))
+                    },
+                    trailingIcon = {
+                        IconButton(onClick = viewModel::toggleNewPasswordVisibility) {
+                            Icon(
+                                imageVector = if (uiState.isNewPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = null,
+                                tint = Slate500,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    },
+                    visualTransformation = if (uiState.isNewPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Next
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Navy900,
+                        focusedLabelColor = Navy900
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // تأكيد كلمة المرور الجديدة
+                OutlinedTextField(
+                    value = uiState.confirmNewPasswordInput,
+                    onValueChange = viewModel::onConfirmNewPasswordChanged,
+                    label = { Text("تأكيد كلمة المرور الجديدة") },
+                    placeholder = { Text("إعادة إدخال كلمة المرور") },
+                    leadingIcon = {
+                        Icon(Icons.Default.Lock, contentDescription = null, tint = Slate500, modifier = Modifier.size(18.dp))
+                    },
+                    trailingIcon = {
+                        IconButton(onClick = viewModel::toggleConfirmNewPasswordVisibility) {
+                            Icon(
+                                imageVector = if (uiState.isConfirmNewPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = null,
+                                tint = Slate500,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    },
+                    visualTransformation = if (uiState.isConfirmNewPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(onDone = { viewModel.changePassword() }),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Navy900,
+                        focusedLabelColor = Navy900
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // زر حفظ كلمة المرور
+                Button(
+                    onClick = viewModel::changePassword,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
+                    enabled = !uiState.isChangingPassword && uiState.newPasswordInput.isNotBlank()
+                ) {
+                    if (uiState.isChangingPassword) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = "حفظ",
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
